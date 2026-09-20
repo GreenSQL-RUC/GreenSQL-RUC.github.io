@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GreenSQL Harness Map</title>
+<meta name="description" content="How the GreenSQL PostgreSQL energy benchmark fits together: Makefile targets, shell drivers and C runners, what each reads from the kernel and from PostgreSQL, and where every measured number ends up.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GreenSQL">
+<meta property="og:title" content="GreenSQL Harness Map">
+<meta property="og:description" content="How the GreenSQL PostgreSQL energy benchmark fits together: Makefile targets, shell drivers and C runners, what each reads from the kernel and from PostgreSQL, and where every measured number ends up.">
+<meta property="og:url" content="https://greensql-ruc.github.io/">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="https://greensql-ruc.github.io/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%231D6B45'/%3E%3Cpath d='M4 11.5V4.5h1.6l2.4 4.2 2.4-4.2H12v7h-1.5V7.2L8.4 10.8h-.8L5.5 7.2v4.3z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+figure{margin:0;display:grid;gap:10px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px}
+.fig-svg{display:block;width:100%;height:auto}
+.fig-map{min-width:1120px}
+.fig-batch{min-width:900px}
+.fig-slope{max-width:580px}
+.intro{display:grid;gap:8px}
+section > .wide{width:100%}
+figcaption{color:var(--muted);font-size:14px;max-width:80ch}
+.two{display:grid;grid-template-columns:minmax(0,580px) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:4px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel)}
+.stat b{display:block;font:600 20px/1.2 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:13px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--panel)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--faint)}
+th{font:600 12px/1.3 "IBM Plex Sans",sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--folder)}
+tr:last-child td{border-bottom:0}
+td code{font-size:12.5px;white-space:nowrap}
+td code.wrapok{white-space:normal}
+td .cols code{white-space:normal}
+.src{display:inline-flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap}
+.sw{width:22px;height:0;border-top:3px solid currentColor;display:inline-block}
+.c-energy{color:var(--energy)} .c-thermal{color:var(--thermal)} .c-server{color:var(--server)}
+.c-client{color:var(--client)} .c-ink{color:var(--ink)} .c-accent{color:var(--accent)}
+ul.plain{margin:0;padding-left:20px;display:grid;gap:6px;max-width:80ch}
+.note{border-left:3px solid var(--accent);padding:8px 14px;background:var(--panel);border-radius:0 8px 8px 0;max-width:80ch}
+
+/* ---- SVG ---- */
+.fig-svg text{fill:var(--ink)}
+.folder{fill:var(--folder);stroke:var(--line);stroke-width:1}
+.entry{fill:var(--entry);stroke:var(--accent);stroke-width:1.2}
+.sub{fill:var(--sub);stroke:var(--line)}
+.item{fill:var(--panel);stroke:var(--line);stroke-width:1}
+.item-accent{fill:var(--panel);stroke:var(--accent);stroke-width:1.8}
+.item-energy{fill:var(--panel);stroke:var(--energy);stroke-width:1.5;stroke-dasharray:5 3}
+.item-thermal{fill:var(--panel);stroke:var(--thermal);stroke-width:1.5;stroke-dasharray:5 3}
+.item-energy-solid{fill:var(--panel);stroke:var(--energy);stroke-width:1.5}
+.item-thermal-solid{fill:var(--panel);stroke:var(--thermal);stroke-width:1.5}
+.pill{fill:var(--panel);stroke:var(--line)}
+.t-h{font:600 14px "IBM Plex Sans",sans-serif}
+.t-h13{font:600 13px "IBM Plex Sans",sans-serif}
+.fig-svg .t-hs{font:400 11.5px "IBM Plex Sans",sans-serif;fill:var(--muted)}
+.t-m{font:500 11.5px "IBM Plex Mono",ui-monospace,monospace}
+.t-m10{font:500 10.5px "IBM Plex Mono",ui-monospace,monospace}
+.t-m9{font:500 9.5px "IBM Plex Mono",ui-monospace,monospace}
+.fig-svg .t-s{font:400 10.5px "IBM Plex Sans",sans-serif;fill:var(--muted)}
+.fig-svg .t-l{font:500 11px "IBM Plex Sans",sans-serif;fill:var(--muted)}
+.fig-svg .t-tick{font:400 11px "IBM Plex Mono",monospace;fill:var(--muted)}
+.fig-svg .t-muted{fill:var(--muted)}
+.fig-svg .t-strong{font-weight:600}
+.fig-svg .t-accent{fill:var(--accent)} .fig-svg .t-energy{fill:var(--energy)} .fig-svg .t-thermal{fill:var(--thermal)}
+.fig-svg .t-server{fill:var(--server)} .fig-svg .t-client{fill:var(--client)} .fig-svg .t-ink{fill:var(--ink)}
+.ln{fill:none;stroke:var(--ink);stroke-width:1.3}
+.ln.accent{stroke:var(--accent);stroke-width:1.6}
+.ln.energy{stroke:var(--energy);stroke-width:1.6}
+.ln.thermal{stroke:var(--thermal);stroke-width:1.6}
+.ln.server{stroke:var(--server);stroke-width:1.6}
+.ln.client{stroke:var(--client);stroke-width:1.6}
+.ln.dash{stroke-dasharray:6 4}
+.ln.faint{stroke:var(--line);stroke-width:1}
+.ln.thick{stroke-width:2.6}
+.halo{fill:none;stroke:var(--panel);stroke-width:9}
+.mk-ink{fill:var(--ink)} .mk-energy{fill:var(--energy)} .mk-thermal{fill:var(--thermal)}
+.mk-server{fill:var(--server)} .mk-client{fill:var(--client)} .mk-accent{fill:var(--accent)}
+.seg-ctl{fill:var(--seg-ctl);stroke:var(--line)}
+.seg-thermal{fill:var(--panel);stroke:var(--thermal);stroke-width:1.4}
+.seg-warm{fill:var(--seg-warm);stroke:var(--line)}
+.seg-batch{fill:var(--panel);stroke:var(--accent);stroke-width:1.2}
+.seg-batch16{fill:var(--entry);stroke:var(--accent);stroke-width:2}
+.zoom{fill:var(--entry);stroke:var(--accent);stroke-width:1.4}
+.copy{fill:var(--panel);stroke:var(--accent);stroke-width:.8}
+.dot-thermal{fill:var(--thermal)} .dot-server{fill:var(--server)}
+.grid{stroke:var(--faint);stroke-width:1}
+.fit{stroke:var(--accent);stroke-width:2;stroke-dasharray:7 4;fill:none}
+.pt{fill:var(--energy);stroke:var(--panel);stroke-width:1.5}
+</style>
+</head>
+<body>
+
+<nav class="sitenav" aria-label="Site sections">
+  <span class="brand">GreenSQL</span>
+  <a href="./" aria-current="page">Harness map</a>
+  <a href="estimator.html">Runtime estimator</a>
+</nav>
+
+<header class="wrap">
+  <div class="eyebrow">PostgreSQL energy benchmark</div>
+  <h1>GreenSQL Harness Map</h1>
+  <p class="lede">How the Makefile, scripts and C runners fit together, what each one reads from the kernel and from PostgreSQL, and where every measured number ends up. Energy comes from Intel RAPL counters; timing and plan statistics come from the wall clock, <code>EXPLAIN ANALYZE</code> and process resource usage. Linux <code>perf</code> counters are not used anywhere.</p>
+</header>
+
+<section>
+  <div class="wrap intro">
+    <h2>How the pieces call each other</h2>
+    <p>Everything starts at a <code>make</code> target, which primes sudo, loads the <code>msr</code> module and passes one bundle of environment variables down. Drivers in <code>run/</code> sequence the work; the compiled runners in <code>bin/</code> do the measuring. On a narrow screen the figure scrolls sideways.</p>
+  </div>
+  <figure class="wide">
+    <div class="scroll"><svg viewBox="0 0 1440 920" role="img" aria-label="System map of the GreenSQL harness: the Makefile drives test scripts, run drivers and C runners; runners read RAPL energy and sysfs thermal sensors from the kernel, run SQL through psql on the PostgreSQL clusters, and append CSV rows under logs, which thermal_check.py reads back." class="fig-svg fig-map">
+<defs>
+  <marker id="a-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-ink"/></marker>
+  <marker id="a-energy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-energy"/></marker>
+  <marker id="a-thermal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-thermal"/></marker>
+  <marker id="a-server" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-server"/></marker>
+  <marker id="a-client" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-client"/></marker>
+  <marker id="a-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-accent"/></marker>
+</defs>
+
+<rect x="20" y="56" width="180" height="544" rx="7" class="entry"/>
+<text x="34" y="80" class="t-h">Makefile</text>
+<text x="34" y="97" class="t-m t-muted">make &lt;target&gt;</text>
+<text x="34" y="113" class="t-s">sudo · msr · env per target</text>
+<text x="34" y="136" class="t-m">test-&lt;guc&gt;</text>
+<text x="34" y="152" class="t-m">test-db-scale</text>
+<text x="34" y="168" class="t-m">plan-snapshots</text>
+<text x="34" y="292" class="t-m">run · cold · write</text>
+<text x="34" y="308" class="t-m">plans · outputs</text>
+<text x="34" y="373" class="t-m t-strong">warm-stepup</text>
+<text x="34" y="422" class="t-m">matrix</text>
+<text x="34" y="469" class="t-m">set-parameters</text>
+<text x="34" y="501" class="t-m">reset-parameters</text>
+<text x="34" y="560" class="t-m t-muted">index-build</text>
+<text x="34" y="576" class="t-m t-muted">write-db · fetch-sqlstorm</text>
+<rect x="280" y="56" width="230" height="220" rx="7" class="folder"/>
+<text x="294" y="80" class="t-h">test/</text>
+<text x="345.0" y="80" class="t-hs">sweeps · checks</text>
+<rect x="294" y="96" width="202" height="26" rx="4" class="item-accent"/>
+<text x="304" y="113.0" class="t-m">thermal_check.py</text>
+<rect x="294" y="128" width="202" height="26" rx="4" class="item"/>
+<text x="304" y="145.0" class="t-m">test_&lt;guc&gt;.sh  ×9</text>
+<rect x="294" y="160" width="202" height="26" rx="4" class="item"/>
+<text x="304" y="177.0" class="t-m">test_db_scale.sh</text>
+<rect x="294" y="192" width="202" height="26" rx="4" class="item"/>
+<text x="304" y="209.0" class="t-m">plan_snapshots.sh</text>
+<rect x="294" y="224" width="202" height="26" rx="4" class="item"/>
+<text x="304" y="241.0" class="t-m">planner_consistency.sh</text>
+<rect x="280" y="316" width="230" height="284" rx="7" class="folder"/>
+<text x="294" y="340" class="t-h">run/</text>
+<text x="336.4" y="340" class="t-hs">drivers (bash)</text>
+<rect x="294" y="354" width="202" height="30" rx="4" class="item-accent"/>
+<text x="304" y="373.0" class="t-m t-strong">run_warm_stepup.sh</text>
+<rect x="294" y="400" width="98" height="36" rx="4" class="item"/>
+<text x="304" y="417" class="t-m9">run_matrix.sh</text>
+<text x="304" y="431" class="t-s">PG × DB grid</text>
+<rect x="398" y="400" width="98" height="36" rx="4" class="item"/>
+<text x="408" y="417" class="t-m9">clock_sweep.sh</text>
+<text x="408" y="431" class="t-s">3 ceilings</text>
+<path d="M343,400 L343,386" class="ln" marker-end="url(#a-ink)"/>
+<path d="M447,400 L447,386" class="ln" marker-end="url(#a-ink)"/>
+<rect x="294" y="452" width="202" height="26" rx="4" class="item"/>
+<text x="304" y="469.0" class="t-m">set_test_parameters.sh</text>
+<rect x="294" y="484" width="202" height="26" rx="4" class="item"/>
+<text x="304" y="501.0" class="t-m">reset_all_parameters.sh</text>
+<rect x="294" y="520" width="202" height="38" rx="4" class="item"/>
+<text x="304" y="537" class="t-m">clock_control.sh</text>
+<text x="304" y="551" class="t-s">pins clock when FIX_CLOCK=1</text>
+<text x="294" y="584" class="t-s">+ the C sources compiled into bin/</text>
+<rect x="610" y="56" width="230" height="420" rx="7" class="folder"/>
+<text x="624" y="80" class="t-h">bin/</text>
+<text x="664" y="80" class="t-hs">runners (C)</text>
+<rect x="624" y="96" width="202" height="40" rx="4" class="item-energy"/>
+<text x="634" y="113" class="t-m">rapl.c · rapl.h</text>
+<text x="634" y="127" class="t-s">linked into query · cold · write</text>
+<rect x="624" y="146" width="202" height="40" rx="4" class="item-thermal"/>
+<text x="634" y="163" class="t-m">sampler thread</text>
+<text x="634" y="177" class="t-s">in query_runner · every 200 ms</text>
+<rect x="624" y="196" width="202" height="56" rx="4" class="item-accent"/>
+<text x="634" y="213" class="t-m t-strong">query_runner</text>
+<text x="634" y="227" class="t-s">warm-ups, then batches of N</text>
+<text x="634" y="241" class="t-s">copies · one psql per batch</text>
+<rect x="624" y="262" width="202" height="40" rx="4" class="item"/>
+<text x="634" y="279" class="t-m">cold_runner</text>
+<text x="634" y="293" class="t-s">drop caches + restart every run</text>
+<rect x="624" y="312" width="202" height="40" rx="4" class="item"/>
+<text x="634" y="329" class="t-m">write_runner</text>
+<text x="634" y="343" class="t-s">SETUP · quiesce · cold · measure</text>
+<rect x="624" y="362" width="202" height="40" rx="4" class="item"/>
+<text x="634" y="379" class="t-m">plan_builder</text>
+<text x="634" y="393" class="t-s">EXPLAIN ANALYZE → plans/</text>
+<rect x="624" y="412" width="202" height="40" rx="4" class="item"/>
+<text x="634" y="429" class="t-m">output_runner</text>
+<text x="634" y="443" class="t-s">result rows → outputs/</text>
+<rect x="930" y="56" width="220" height="250" rx="7" class="folder"/>
+<text x="944" y="80" class="t-h">Linux kernel</text>
+<text x="1048" y="80" class="t-hs">root only</text>
+<rect x="944" y="96" width="192" height="40" rx="4" class="item-energy-solid"/>
+<text x="954" y="113" class="t-m10">/dev/cpu/0/msr</text>
+<text x="954" y="127" class="t-s">RAPL pkg 0x611 · core 0x639</text>
+<rect x="944" y="146" width="192" height="40" rx="4" class="item-thermal-solid"/>
+<text x="954" y="163" class="t-m10">hwmon / coretemp</text>
+<text x="954" y="177" class="t-s">package + core °C</text>
+<rect x="944" y="196" width="192" height="40" rx="4" class="item-thermal-solid"/>
+<text x="954" y="213" class="t-m10">cpufreq · thermal_throttle</text>
+<text x="954" y="227" class="t-s">MHz · throttle counts · governor</text>
+<rect x="944" y="246" width="192" height="40" rx="4" class="item"/>
+<text x="954" y="263" class="t-m10">drop_caches · pg_ctlcluster</text>
+<text x="954" y="277" class="t-s">cold start: empty both caches</text>
+<rect x="930" y="346" width="220" height="190" rx="7" class="folder"/>
+<text x="944" y="370" class="t-h">PostgreSQL</text>
+<text x="1036" y="370" class="t-hs">version = port</text>
+<rect x="944" y="384" width="58" height="22" rx="11" class="pill"/>
+<text x="973" y="399" class="t-m10" text-anchor="middle">14 :5433</text>
+<rect x="1008" y="384" width="58" height="22" rx="11" class="pill"/>
+<text x="1037" y="399" class="t-m10" text-anchor="middle">16 :5432</text>
+<rect x="1072" y="384" width="58" height="22" rx="11" class="pill"/>
+<text x="1101" y="399" class="t-m10" text-anchor="middle">18 :5434</text>
+<text x="944" y="428" class="t-m">tpch · tpch2 · tpch5</text>
+<text x="944" y="445" class="t-m">tpch_idx · estat</text>
+<text x="944" y="462" class="t-m">warehouse · tpch_write</text>
+<text x="944" y="488" class="t-s">testing GUCs set by ALTER SYSTEM</text>
+<text x="944" y="504" class="t-s">psql always runs as postgres</text>
+<rect x="1230" y="56" width="190" height="420" rx="7" class="folder"/>
+<text x="1244" y="80" class="t-h">logs/</text>
+<text x="1284" y="80" class="t-hs">append-only CSV</text>
+<rect x="1242" y="96" width="166" height="128" rx="4" class="sub"/>
+<text x="1252" y="114" class="t-m t-strong">warm_stepup/&lt;run&gt;/</text>
+<text x="1262" y="134" class="t-m10">query_timing_&lt;db&gt;.csv</text>
+<text x="1262" y="150" class="t-m10">query_samples_&lt;db&gt;.csv</text>
+<text x="1262" y="166" class="t-m10">query_catalog_&lt;db&gt;.csv</text>
+<text x="1262" y="182" class="t-m10">summary.txt</text>
+<text x="1262" y="198" class="t-m10">run_order_&lt;id&gt;.txt</text>
+<rect x="1242" y="234" width="166" height="40" rx="4" class="item"/>
+<text x="1252" y="251" class="t-m10">clock_sweep/&lt;stamp&gt;/</text>
+<text x="1252" y="265" class="t-s">manifest · pass logs</text>
+<rect x="1242" y="284" width="166" height="26" rx="4" class="item"/>
+<text x="1252" y="301.0" class="t-m10">query_cold_&lt;db&gt;.csv</text>
+<rect x="1242" y="318" width="166" height="26" rx="4" class="item"/>
+<text x="1252" y="335.0" class="t-m10">write_cold_&lt;db&gt;.csv</text>
+<rect x="1242" y="352" width="166" height="40" rx="4" class="item"/>
+<text x="1252" y="369" class="t-m10">&lt;guc&gt;/ · db_scale</text>
+<text x="1252" y="383" class="t-s">test/ sweep results</text>
+<text x="1242" y="416" class="t-s">Refuses to append to a</text>
+<text x="1242" y="430" class="t-s">CSV whose header differs.</text>
+<rect x="1230" y="496" width="92" height="44" rx="6" class="folder"/>
+<text x="1242" y="515" class="t-h13">plans/</text>
+<text x="1242" y="531" class="t-s">plan_builder</text>
+<rect x="1328" y="496" width="92" height="44" rx="6" class="folder"/>
+<text x="1340" y="515" class="t-h13">outputs/</text>
+<text x="1340" y="531" class="t-s">output_runner</text>
+<rect x="20" y="720" width="490" height="186" rx="7" class="folder"/>
+<text x="34" y="744" class="t-h">build/</text>
+<text x="86" y="744" class="t-hs">provision · load · generate · reads schema/</text>
+<rect x="34" y="758" width="225" height="40" rx="4" class="item"/>
+<text x="44" y="775" class="t-m10">bootstrap_ubuntu.sh</text>
+<text x="44" y="789" class="t-s">PGDG · PG 15–18 · pinned minors</text>
+<rect x="34" y="806" width="225" height="40" rx="4" class="item"/>
+<text x="44" y="823" class="t-m10">build_all.sh · build_tpch.sh</text>
+<text x="44" y="837" class="t-s">dbgen at SF 1 · 2 · 5 · SKEW=z</text>
+<rect x="34" y="854" width="225" height="40" rx="4" class="item"/>
+<text x="44" y="871" class="t-m10">build_tpch_indexed.sh</text>
+<text x="44" y="885" class="t-s">&lt;db&gt;_idx clones + index suite</text>
+<rect x="271" y="758" width="225" height="40" rx="4" class="item"/>
+<text x="281" y="775" class="t-m10">build_estat.sh</text>
+<text x="281" y="789" class="t-s">and build_warehouse.sh</text>
+<rect x="271" y="806" width="225" height="40" rx="4" class="item"/>
+<text x="281" y="823" class="t-m10">fetch_sqlstorm_queries.sh</text>
+<text x="281" y="837" class="t-s">17 036 SQLStorm files, pinned</text>
+<rect x="271" y="854" width="225" height="40" rx="4" class="item"/>
+<text x="281" y="871" class="t-m10">generate_tpch_*.py</text>
+<text x="281" y="885" class="t-s">query sets + write set</text>
+<rect x="610" y="720" width="230" height="186" rx="7" class="folder"/>
+<text x="624" y="744" class="t-h">queries/</text>
+<text x="694" y="744" class="t-hs">all SQL</text>
+<text x="624" y="772" class="t-m">tpch/tpch-queries</text>
+<text x="826" y="772" class="t-m t-muted" text-anchor="end">53</text>
+<text x="624" y="793" class="t-m">tpch/SQLStorm</text>
+<text x="826" y="793" class="t-m t-muted" text-anchor="end">17 036</text>
+<text x="624" y="814" class="t-m">tpch/Core · Functions</text>
+<text x="624" y="835" class="t-m">estat/ · warehouse/</text>
+<text x="624" y="856" class="t-m">equivalent/ · slow/</text>
+<text x="624" y="877" class="t-m">write/tpch</text>
+<text x="826" y="877" class="t-m t-muted" text-anchor="end">35</text>
+<text x="944" y="752" class="t-hs">Line colour = what the line carries</text>
+<path d="M944,772 L984,772" class="ln energy"/>
+<text x="996" y="776" class="t-l">RAPL energy counters</text>
+<path d="M944,796 L984,796" class="ln thermal"/>
+<text x="996" y="800" class="t-l">thermal + clock sensors (sysfs)</text>
+<path d="M944,820 L984,820" class="ln server dash"/>
+<text x="996" y="824" class="t-l">server stats parsed from EXPLAIN</text>
+<path d="M944,844 L984,844" class="ln"/>
+<text x="996" y="848" class="t-l">calls · control · writes</text>
+<path d="M944,868 L984,868" class="ln dash"/>
+<text x="996" y="872" class="t-l">setup time: build and load</text>
+<path d="M200,141 L294,141" class="ln" marker-end="url(#a-ink)"/>
+<text x="240" y="135" class="t-l" text-anchor="middle">test-*</text>
+<path d="M294,205 L200,205" class="ln" marker-end="url(#a-ink)"/>
+<text x="240" y="221" class="t-l" text-anchor="middle">make run,</text>
+<text x="240" y="234" class="t-l" text-anchor="middle">cold, plans</text>
+<path d="M200,369 L294,369" class="ln" marker-end="url(#a-ink)"/>
+<path d="M200,418 L294,418" class="ln" marker-end="url(#a-ink)"/>
+<path d="M200,465 L294,465" class="ln" marker-end="url(#a-ink)"/>
+<path d="M200,497 L294,497" class="ln" marker-end="url(#a-ink)"/>
+<path d="M496,362 L548,362 L548,224 L624,224" class="ln accent" marker-end="url(#a-accent)"/>
+<text x="580" y="217" class="t-l t-accent" text-anchor="middle">per entry</text>
+<path d="M200,298 L610,298" class="halo"/>
+<path d="M200,298 L610,298" class="ln" marker-end="url(#a-ink)"/>
+<text x="395" y="292" class="t-l" text-anchor="middle">runner targets</text>
+<path d="M826,116 L944,116" class="ln energy" marker-end="url(#a-energy)"/>
+<text x="885" y="110" class="t-l t-energy" text-anchor="middle">rdmsr</text>
+<path d="M826,166 L944,166" class="ln thermal" marker-end="url(#a-thermal)"/>
+<path d="M885,166 L885,216 L944,216" class="ln thermal" marker-end="url(#a-thermal)"/>
+<text x="885" y="160" class="t-l t-thermal" text-anchor="middle">every 200 ms</text>
+<path d="M840,400 L930,400" class="ln" marker-end="url(#a-ink)"/>
+<text x="885" y="394" class="t-l" text-anchor="middle">psql -f</text>
+<path d="M930,432 L840,432" class="ln server dash" marker-end="url(#a-server)"/>
+<text x="885" y="448" class="t-l t-server" text-anchor="middle">plan · buffers</text>
+<path d="M800,56 L800,36 L1300,36 L1300,56" class="ln" marker-end="url(#a-ink)"/>
+<text x="1050" y="31" class="t-l" text-anchor="middle">append one row per batch, copy or run</text>
+<path d="M1400,56 L1400,16 L470,16 L470,96" class="ln accent" marker-end="url(#a-accent)"/>
+<text x="700" y="11" class="t-l t-accent" text-anchor="middle">thermal_check.py reads warm_stepup/&lt;run&gt;/ and prints the acceptance table</text>
+<path d="M496,465 L566,465" class="ln"/>
+<path d="M496,497 L566,497" class="ln"/>
+<path d="M566,465 L566,640 L1040,640 L1040,536" class="ln" marker-end="url(#a-ink)"/>
+<text x="850" y="634" class="t-l" text-anchor="middle">ALTER SYSTEM + restart</text>
+<path d="M395,600 L395,660 L1200,660 L1200,216 L1150,216" class="ln" marker-end="url(#a-ink)"/>
+<path d="M1200,266 L1150,266" class="ln" marker-end="url(#a-ink)"/>
+<text x="1000" y="654" class="t-l" text-anchor="middle">cold start per entry · clock pin</text>
+<path d="M110,600 L110,720" class="ln dash" marker-end="url(#a-ink)"/>
+<text x="118" y="668" class="t-l">index-build · write-db · fetch-sqlstorm</text>
+<path d="M510,790 L610,790" class="ln dash" marker-end="url(#a-ink)"/>
+<text x="560" y="784" class="t-l" text-anchor="middle">writes .sql</text>
+<path d="M480,720 L480,700 L1100,700 L1100,536" class="halo"/>
+<path d="M480,720 L480,700 L1100,700 L1100,536" class="ln dash" marker-end="url(#a-ink)"/>
+<text x="960" y="714" class="t-l" text-anchor="middle">creates + loads databases</text>
+<path d="M725,720 L725,476" class="halo"/>
+<path d="M725,720 L725,476" class="ln accent" marker-end="url(#a-accent)"/>
+<text x="732" y="556" class="t-l t-accent">QUERY_DIR:</text>
+<text x="732" y="570" class="t-l t-accent">file or folder</text></svg></div>
+    <figcaption class="wrap">Folders are the grey containers. Green marks the main benchmark path: <code>make warm-stepup</code> runs <code>run_warm_stepup.sh</code>, which cold-starts the cluster and then hands one query file at a time to <code>query_runner</code>. Only the runners read RAPL or the thermal sensors. Where two lines cross with a gap, one passes over the other; they do not join. The clusters shown are what this laptop runs today; <code>bootstrap_ubuntu.sh</code> now installs 15 to 18 at pinned minors.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="wrap intro">
+    <h2>Where each number comes from</h2>
+    <p>One warm step-up entry, and a zoom into its largest batch. The values are the real ones logged for TPC-H q01 on <code>tpch_idx</code> in run 3, the gated run with the clock pinned at 1.7 GHz.</p>
+  </div>
+  <figure class="wide">
+    <div class="scroll"><svg viewBox="0 0 1200 600" role="img" aria-label="Timeline of one warm step-up entry (cold start, thermal gate, two warm-ups, batches of 1 to 16 copies) and a zoom into the 16-copy batch showing when RAPL, the wall clock, the 200 ms sensor sampler, per-copy EXPLAIN parsing and rusage are read, with the values logged for q01 in run 3." class="fig-svg fig-batch">
+<defs>
+  <marker id="a-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-ink"/></marker>
+  <marker id="a-energy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-energy"/></marker>
+  <marker id="a-thermal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-thermal"/></marker>
+  <marker id="a-server" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-server"/></marker>
+  <marker id="a-client" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-client"/></marker>
+  <marker id="a-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-accent"/></marker>
+</defs>
+
+<text x="20" y="66" class="t-h13">one entry</text>
+<text x="20" y="82" class="t-s">q01, run 3</text>
+<rect x="170" y="50" width="104" height="36" rx="3" class="seg-ctl"/>
+<text x="222.0" y="72" class="t-m10" text-anchor="middle">cold start</text>
+<text x="222.0" y="22" class="t-s" text-anchor="middle">drop caches</text>
+<text x="222.0" y="36" class="t-s" text-anchor="middle">+ restart</text>
+<rect x="280" y="50" width="104" height="36" rx="3" class="seg-thermal"/>
+<text x="332.0" y="72" class="t-m10" text-anchor="middle">thermal gate</text>
+<text x="332.0" y="22" class="t-s" text-anchor="middle">wait until</text>
+<text x="332.0" y="36" class="t-s" text-anchor="middle">55–60 °C</text>
+<rect x="390" y="50" width="22.848484848484848" height="36" rx="3" class="seg-warm"/>
+<rect x="418.8484848484849" y="50" width="22.848484848484848" height="36" rx="3" class="seg-warm"/>
+<rect x="447.69696969696975" y="50" width="22.848484848484848" height="36" rx="3" class="seg-batch"/>
+<rect x="476.5454545454546" y="50" width="45.696969696969695" height="36" rx="3" class="seg-batch"/>
+<text x="499.3939393939395" y="72" class="t-m10" text-anchor="middle">N=2</text>
+<rect x="528.2424242424244" y="50" width="91.39393939393939" height="36" rx="3" class="seg-batch"/>
+<text x="573.9393939393941" y="72" class="t-m10" text-anchor="middle">N=4</text>
+<rect x="625.6363636363637" y="50" width="182.78787878787878" height="36" rx="3" class="seg-batch"/>
+<text x="717.0303030303031" y="72" class="t-m10" text-anchor="middle">N=8</text>
+<rect x="814.4242424242425" y="50" width="365.57575757575756" height="36" rx="3" class="seg-batch16"/>
+<text x="997.2121212121212" y="72" class="t-m10" text-anchor="middle">N=16</text>
+<text x="415.8484848484849" y="22" class="t-s" text-anchor="middle">2 warm-ups</text>
+<text x="415.8484848484849" y="36" class="t-s" text-anchor="middle">phase=warmup</text>
+<text x="810.8484848484849" y="22" class="t-s" text-anchor="middle">batches of N = 1 · 2 · 4 · 8 · 16 copies, widths to scale</text>
+<text x="810.8484848484849" y="36" class="t-s" text-anchor="middle">phase=measured · one query_timing row each</text>
+<path d="M814.4242424242425,86 L170,160" class="ln faint"/>
+<path d="M1180.0,86 L860,160" class="ln faint"/>
+<rect x="170" y="160" width="690" height="44" rx="4" class="zoom"/>
+<rect x="179.5" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="221.625" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="263.75" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="305.875" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="348.0" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="390.125" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="432.25" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="474.375" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="516.5" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="558.625" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="600.75" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="642.875" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="685.0" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="727.125" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="769.25" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<rect x="811.375" y="168" width="39.125" height="28" rx="2" class="copy"/>
+<text x="20" y="180" class="t-h13">N=16 batch</text>
+<text x="20" y="196" class="t-s">one psql process</text>
+<text x="515.0" y="152" class="t-s" text-anchor="middle">16 copies of EXPLAIN (ANALYZE, TIMING OFF, BUFFERS) q01</text>
+<text x="20" y="254" class="t-h13 t-server">EXPLAIN</text>
+<text x="20" y="270" class="t-s">parsed per copy</text>
+<path d="M199.0625,204 L199.0625,248" class="ln server faint"/>
+<circle cx="199.1" cy="250" r="3" class="dot-server"/>
+<path d="M241.1875,204 L241.1875,248" class="ln server faint"/>
+<circle cx="241.2" cy="250" r="3" class="dot-server"/>
+<path d="M283.3125,204 L283.3125,248" class="ln server faint"/>
+<circle cx="283.3" cy="250" r="3" class="dot-server"/>
+<path d="M325.4375,204 L325.4375,248" class="ln server faint"/>
+<circle cx="325.4" cy="250" r="3" class="dot-server"/>
+<path d="M367.5625,204 L367.5625,248" class="ln server faint"/>
+<circle cx="367.6" cy="250" r="3" class="dot-server"/>
+<path d="M409.6875,204 L409.6875,248" class="ln server faint"/>
+<circle cx="409.7" cy="250" r="3" class="dot-server"/>
+<path d="M451.8125,204 L451.8125,248" class="ln server faint"/>
+<circle cx="451.8" cy="250" r="3" class="dot-server"/>
+<path d="M493.9375,204 L493.9375,248" class="ln server faint"/>
+<circle cx="493.9" cy="250" r="3" class="dot-server"/>
+<path d="M536.0625,204 L536.0625,248" class="ln server faint"/>
+<circle cx="536.1" cy="250" r="3" class="dot-server"/>
+<path d="M578.1875,204 L578.1875,248" class="ln server faint"/>
+<circle cx="578.2" cy="250" r="3" class="dot-server"/>
+<path d="M620.3125,204 L620.3125,248" class="ln server faint"/>
+<circle cx="620.3" cy="250" r="3" class="dot-server"/>
+<path d="M662.4375,204 L662.4375,248" class="ln server faint"/>
+<circle cx="662.4" cy="250" r="3" class="dot-server"/>
+<path d="M704.5625,204 L704.5625,248" class="ln server faint"/>
+<circle cx="704.6" cy="250" r="3" class="dot-server"/>
+<path d="M746.6875,204 L746.6875,248" class="ln server faint"/>
+<circle cx="746.7" cy="250" r="3" class="dot-server"/>
+<path d="M788.8125,204 L788.8125,248" class="ln server faint"/>
+<circle cx="788.8" cy="250" r="3" class="dot-server"/>
+<path d="M830.9375,204 L830.9375,248" class="ln server faint"/>
+<circle cx="830.9" cy="250" r="3" class="dot-server"/>
+<path d="M868,250 L884,250" class="ln faint"/>
+<text x="890" y="239" class="t-m10 t-muted">server_execution_ms</text>
+<text x="1040" y="239" class="t-m10 t-strong t-server">2807  (copy 1)</text>
+<text x="890" y="253" class="t-m10 t-muted">shared_hit_blks</text>
+<text x="1040" y="253" class="t-m10 t-strong t-server">112 628</text>
+<text x="890" y="267" class="t-m10 t-muted">workers_launched</text>
+<text x="1040" y="267" class="t-m10 t-strong t-server">4</text>
+<text x="20" y="316" class="t-h13 t-energy">RAPL</text>
+<text x="20" y="332" class="t-s">rdmsr before / after</text>
+<path d="M170,302 L170,322" class="ln energy thick"/>
+<path d="M860,302 L860,322" class="ln energy thick"/>
+<path d="M170,312 L860,312" class="ln energy"/>
+<text x="176" y="306" class="t-l t-energy">before</text>
+<text x="854" y="306" class="t-l t-energy" text-anchor="end">after</text>
+<path d="M868,312 L884,312" class="ln faint"/>
+<text x="890" y="301" class="t-m10 t-muted">rapl_pkg_j</text>
+<text x="1040" y="301" class="t-m10 t-strong t-energy">403.7</text>
+<text x="890" y="315" class="t-m10 t-muted">rapl_core_j</text>
+<text x="1040" y="315" class="t-m10 t-strong t-energy">350.2</text>
+<text x="890" y="329" class="t-m10 t-muted">gpu, dram</text>
+<text x="1040" y="329" class="t-m10 t-strong t-energy">blank on this CPU</text>
+<text x="20" y="378" class="t-h13 t-ink">wall clock</text>
+<text x="20" y="394" class="t-s">CLOCK_MONOTONIC</text>
+<path d="M170,374 L860,374" class="ln" marker-end="url(#a-ink)" marker-start="url(#a-ink)"/>
+<path d="M868,374 L884,374" class="ln faint"/>
+<text x="890" y="370" class="t-m10 t-muted">elapsed_sec</text>
+<text x="1040" y="370" class="t-m10 t-strong t-ink">44.51</text>
+<text x="890" y="384" class="t-m10 t-muted">avg_copy_elapsed_sec</text>
+<text x="1040" y="384" class="t-m10 t-strong t-ink">2.78</text>
+<text x="20" y="440" class="t-h13 t-thermal">sampler</text>
+<text x="20" y="456" class="t-s">sysfs every 200 ms</text>
+<path d="M170,436 L860,436" class="ln thermal faint"/>
+<circle cx="176.0" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="187.9" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="199.8" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="211.7" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="223.6" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="235.5" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="247.4" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="259.3" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="271.2" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="283.1" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="294.9" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="306.8" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="318.7" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="330.6" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="342.5" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="354.4" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="366.3" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="378.2" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="390.1" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="402.0" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="413.9" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="425.8" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="437.7" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="449.6" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="461.5" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="473.4" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="485.3" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="497.2" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="509.1" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="520.9" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="532.8" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="544.7" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="556.6" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="568.5" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="580.4" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="592.3" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="604.2" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="616.1" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="628.0" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="639.9" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="651.8" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="663.7" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="675.6" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="687.5" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="699.4" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="711.3" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="723.2" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="735.1" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="746.9" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="758.8" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="770.7" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="782.6" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="794.5" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="806.4" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="818.3" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="830.2" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="842.1" cy="436" r="2.2" class="dot-thermal"/>
+<circle cx="854.0" cy="436" r="2.2" class="dot-thermal"/>
+<path d="M868,436 L884,436" class="ln faint"/>
+<text x="890" y="425" class="t-m10 t-muted">pkg_temp start / max</text>
+<text x="1040" y="425" class="t-m10 t-strong t-thermal">64.0 / 65.0 °C</text>
+<text x="890" y="439" class="t-m10 t-muted">mhz_mean</text>
+<text x="1040" y="439" class="t-m10 t-strong t-thermal">1577</text>
+<text x="890" y="453" class="t-m10 t-muted">throttle deltas</text>
+<text x="1040" y="453" class="t-m10 t-strong t-thermal">0</text>
+<text x="20" y="502" class="t-h13 t-client">rusage</text>
+<text x="20" y="518" class="t-s">wait4() on psql</text>
+<path d="M170,498 L860,498" class="ln client" marker-end="url(#a-client)" marker-start="url(#a-client)"/>
+<path d="M868,498 L884,498" class="ln faint"/>
+<text x="890" y="494" class="t-m10 t-muted">client_user_cpu_sec</text>
+<text x="1040" y="494" class="t-m10 t-strong t-client">0.056</text>
+<text x="890" y="508" class="t-m10 t-muted">client_max_rss_kb</text>
+<text x="1040" y="508" class="t-m10 t-strong t-client">9 600</text>
+<text x="20" y="564" class="t-h13">derived</text>
+<text x="20" y="580" class="t-s">per batch</text>
+<text x="170" y="564" class="t-m10">client_overhead_sec = elapsed − Σ server time = 44.51 − 44.41 = 0.099 s</text>
+<text x="170" y="580" class="t-m10">pkg_watts_mean = 403.7 J ÷ 44.51 s = 9.07 W</text>
+<text x="890" y="564" class="t-m10 t-strong">→ query_timing_&lt;db&gt;.csv (batch row)</text>
+<text x="890" y="580" class="t-m10 t-strong">→ query_samples_&lt;db&gt;.csv (16 copy rows)</text></svg></div>
+    <figcaption class="wrap">RAPL is read exactly twice per batch, at the edges of the psql process, so process start, connection and all sixteen copies land in one energy number. Figure 3 is how the harness separates them. The sampler runs in its own thread and never touches psql. Energy the PostgreSQL backend spends shows up in RAPL only, because the backend is not a child of the runner and so is missing from rusage.</figcaption>
+  </figure>
+</section>
+
+<section class="wrap">
+  <h2>Why batches step up from 1 to 16 copies</h2>
+  <div class="two">
+    <figure>
+      <div class="scroll"><svg viewBox="0 0 580 300" role="img" aria-label="Package energy of q01 in run 3 against batch size: 27 J at 1 copy up to 403 J at 16, on a straight line with slope 25.1 joules per copy and intercept 1.6 joules." class="fig-svg fig-slope">
+<defs>
+  <marker id="a-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-ink"/></marker>
+  <marker id="a-energy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-energy"/></marker>
+  <marker id="a-thermal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-thermal"/></marker>
+  <marker id="a-server" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-server"/></marker>
+  <marker id="a-client" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-client"/></marker>
+  <marker id="a-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-accent"/></marker>
+</defs>
+
+<path d="M64,254.0 L540,254.0" class="grid"/>
+<text x="56" y="258.0" class="t-tick" text-anchor="end">0</text>
+<path d="M64,202.88888888888889 L540,202.88888888888889" class="grid"/>
+<text x="56" y="206.88888888888889" class="t-tick" text-anchor="end">100</text>
+<path d="M64,151.77777777777777 L540,151.77777777777777" class="grid"/>
+<text x="56" y="155.77777777777777" class="t-tick" text-anchor="end">200</text>
+<path d="M64,100.66666666666666 L540,100.66666666666666" class="grid"/>
+<text x="56" y="104.66666666666666" class="t-tick" text-anchor="end">300</text>
+<path d="M64,49.55555555555554 L540,49.55555555555554" class="grid"/>
+<text x="56" y="53.55555555555554" class="t-tick" text-anchor="end">400</text>
+<path d="M64.0,254 L64.0,258" class="ln"/>
+<text x="64.0" y="272" class="t-tick" text-anchor="middle">0</text>
+<path d="M93.75,254 L93.75,258" class="ln"/>
+<text x="93.75" y="272" class="t-tick" text-anchor="middle">1</text>
+<path d="M123.5,254 L123.5,258" class="ln"/>
+<text x="123.5" y="272" class="t-tick" text-anchor="middle">2</text>
+<path d="M183.0,254 L183.0,258" class="ln"/>
+<text x="183.0" y="272" class="t-tick" text-anchor="middle">4</text>
+<path d="M302.0,254 L302.0,258" class="ln"/>
+<text x="302.0" y="272" class="t-tick" text-anchor="middle">8</text>
+<path d="M540.0,254 L540.0,258" class="ln"/>
+<text x="540.0" y="272" class="t-tick" text-anchor="middle">16</text>
+<path d="M64,254 L540,254" class="ln"/>
+<text x="302.0" y="292" class="t-s" text-anchor="middle">copies of q01 in one psql process (N)</text>
+<text x="20" y="16" class="t-s">package energy, J</text>
+<path d="M64.0,253.2035185185185 L540.0,48.176517323775386" class="fit"/>
+<circle cx="93.8" cy="240.1" r="4.5" class="pt"/>
+<circle cx="123.5" cy="227.6" r="4.5" class="pt"/>
+<circle cx="183.0" cy="202.2" r="4.5" class="pt"/>
+<circle cx="302.0" cy="150.8" r="4.5" class="pt"/>
+<circle cx="540.0" cy="48.1" r="4.5" class="pt"/>
+<text x="532.0" y="70.07333333333332" class="t-l t-energy" text-anchor="end">403 J</text>
+<text x="319.85" y="129.00150537634408" class="t-l t-strong" text-anchor="end">slope 25.1 J per extra copy</text>
+<path d="M146,243 L68.0,251.2035185185185" class="ln faint"/>
+<text x="150" y="247" class="t-l t-muted">intercept 1.6 J at N = 0</text></svg></div>
+      <figcaption>q01 in run 3, mean of three repeats per batch size, with the least-squares line. One copy took 27 J; sixteen took 403 J.</figcaption>
+    </figure>
+    <div style="display:grid;gap:12px">
+      <p>A batch's energy has two parts: a fixed cost for starting psql, connecting and tearing down, and a cost per copy of the query. Fitting a straight line through the step-up separates them. The slope is the query's own marginal energy; the intercept is the process overhead that a single-copy measurement would wrongly charge to the query.</p>
+      <div class="stats">
+        <div class="stat"><b>25.1 J</b><span>per extra copy (slope)</span></div>
+        <div class="stat"><b>1.6 J</b><span>fixed per process (intercept)</span></div>
+        <div class="stat"><b>9.1 W</b><span>package power, every size</span></div>
+      </div>
+      <p><code>test/thermal_check.py</code> reports how far a quick two-point slope from 1 and 16 copies lands from this full fit. With the gated start and the clock pinned, the median error across all 53 queries fell to 0.59%, from 1.28% before the thermal protocol.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap intro">
+    <h2>Every measurement, by source</h2>
+    <p>File names are shortened: <em>timing</em> is <code>query_timing_&lt;db&gt;.csv</code>, <em>samples</em> is <code>query_samples_&lt;db&gt;.csv</code>, <em>cold</em> is <code>query_cold_&lt;db&gt;.csv</code>, and <em>write</em> is <code>write_cold_&lt;db&gt;.csv</code>.</p>
+  </div>
+  <div class="tbl wide"><table><thead><tr><th>Source</th><th>How it is read</th><th>When</th><th>CSV columns</th><th>Files</th></tr></thead><tbody><tr><td><span class='src c-energy'><i class='sw'></i>RAPL energy</span></td><td>rdmsr on <code>/dev/cpu/0/msr</code>: pkg <code>0x611</code>, core <code>0x639</code>, gpu <code>0x641</code>, dram <code>0x619</code>; units from <code>0x606</code></td><td>Just before and just after each batch (warm) or each execution (cold, write). 32-bit counters; a wrap is corrected.</td><td class='cols'><code>rapl_pkg_j</code> <code>rapl_core_j</code> <code>rapl_gpu_j</code> <code>rapl_dram_j</code> <code>pkg_watts_mean</code></td><td>timing, cold, write</td></tr><tr><td><span class='src c-ink'><i class='sw'></i>Wall clock</span></td><td><code>CLOCK_MONOTONIC</code> around the psql process</td><td>Per batch or execution.</td><td class='cols'><code>elapsed_sec</code> <code>avg_copy_elapsed_sec</code></td><td>timing, cold, write</td></tr><tr><td><span class='src c-thermal'><i class='sw'></i>Thermal and clock</span></td><td>sysfs: hwmon coretemp, <code>cpufreq/scaling_cur_freq</code>, <code>thermal_throttle/*_count</code></td><td>Background thread every 200 ms during a batch, plus readings at the gate before it.</td><td class='cols'><code>pkg_temp_start_c</code> <code>pkg_temp_end_c</code> <code>pkg_temp_mean_c</code> <code>pkg_temp_max_c</code> <code>core_temp_max_c</code> <code>mhz_mean</code> <code>throttle_core_delta</code> <code>throttle_pkg_delta</code> <code>idle_before_s</code> <code>preheat_s</code> <code>cooldown_wait_s</code></td><td>timing, samples</td></tr><tr><td><span class='src c-server'><i class='sw'></i>Server statistics</span></td><td>Each copy is wrapped in <code class='wrapok'>EXPLAIN (ANALYZE, TIMING OFF, COSTS ON, SUMMARY ON, BUFFERS)</code> and the psql output is parsed</td><td>Per copy; summed per batch.</td><td class='cols'><code>server_planning_ms</code> <code>server_execution_ms</code> <code>shared_hit/read/dirtied/written_blks</code> <code>temp_read/written_blks</code> <code>plan_nodes</code> <code>scan_nodes</code> <code>rows_out</code> <code>rows_processed</code> <code>rows_estimated</code> <code>workers_launched</code> <code>relations</code> <code>server_sum_ms</code></td><td>samples, cold</td></tr><tr><td><span class='src c-client'><i class='sw'></i>Client process</span></td><td><code>wait4()</code> resource usage of the psql process tree</td><td>Per batch or execution. The backend is not a child, so its CPU shows up only in RAPL.</td><td class='cols'><code>client_user_cpu_sec</code> <code>client_sys_cpu_sec</code> <code>client_max_rss_kb</code> <code>client_overhead_sec</code> (elapsed minus server time)</td><td>timing, cold, write</td></tr><tr><td><span class='src c-accent'><i class='sw'></i>Write-only</span></td><td>psql <code>\timing</code>, and <code>pg_current_wal_lsn()</code> before and after, in the same session</td><td>Per cold execution, around the section below <code>-- @MEASURE</code> only.</td><td class='cols'><code>stmt_ms</code> <code>wal_bytes</code> <code>setup_sec</code> <code>failed_stage</code></td><td>write</td></tr><tr><td><span class='src c-ink'><i class='sw'></i>Catalog snapshot</span></td><td><code>pg_class</code> sizes for every relation</td><td>Once per run.</td><td class='cols'><code>reltuples</code> <code>relpages</code> <code>heap_bytes</code> <code>index_bytes</code> <code>total_bytes</code></td><td>catalog</td></tr><tr><td><span class='src c-ink'><i class='sw'></i>Run context</span></td><td><code>summary.txt</code> and the order file</td><td>Once per run.</td><td class='cols'>thermal policy, clock state (governor, no_turbo, max freq), RAPL limits (this laptop: PL1 22 W, PL2 44 W, τ 28 s), dmesg throttle count, each entry's run id and its predecessor</td><td>summary, order</td></tr></tbody></table></div>
+  <div class="wrap"><p class="note">On this CPU the RAPL GPU and DRAM domains are not exposed, so those two columns stay blank rather than zero.</p></div>
+</section>
+
+<section class="wrap">
+  <h2>Runners compared</h2>
+  <div class='tbl'><table><thead><tr><th>Runner</th><th>Started by</th><th>Cache state</th><th>Unit measured</th><th>RAPL window</th><th>Writes</th></tr></thead><tbody><tr><td><code>query_runner</code></td><td><code>make run · make warm-stepup</code></td><td>Warm. Under warm-stepup, each entry gets a cold start first and is then warmed up.</td><td>A batch of N copies in one psql process, for each N in BATCH_SIZES</td><td>One batch</td><td>query_timing, query_samples, query_catalog</td></tr><tr><td><code>cold_runner</code></td><td><code>make cold</code></td><td>Cold: caches dropped and cluster restarted before every execution</td><td>One execution</td><td>One execution</td><td>query_cold_&lt;db&gt;.csv</td></tr><tr><td><code>write_runner</code></td><td><code>make write</code></td><td>Cold, after SETUP and quiesce (autovacuum off on w_* tables, CHECKPOINT)</td><td>The section below the marker line</td><td>Measured section only</td><td>write_cold_&lt;db&gt;.csv</td></tr><tr><td><code>plan_builder</code></td><td><code>make plans</code></td><td>As found</td><td>EXPLAIN ANALYZE text; APPEND=1 adds dated snapshots and a plan-shape hash</td><td>None</td><td>plans/&lt;db&gt;/</td></tr><tr><td><code>output_runner</code></td><td><code>make outputs</code></td><td>As found</td><td>Result rows, up to MAX_ROWS</td><td>None</td><td>outputs/&lt;db&gt;/</td></tr></tbody></table></div>
+</section>
+
+<section class="wrap">
+  <h2>Folders not drawn</h2>
+  <ul class="plain">
+    <li><code>schema/</code> holds the table and index DDL that the build scripts load.</li>
+    <li><code>tpch-dbgen/</code> and <code>tpch-dbgen-skew/</code> are fetched and compiled by <code>build_tpch.sh</code>, never shipped.</li>
+    <li><code>matrix_logs/</code> holds the resumable manifest of <code>make matrix</code>.</li>
+    <li><code>archive/</code> and <code>old/</code> keep earlier logs and the pre-restructure runner for reference.</li>
+  </ul>
+</section>
+
+<footer class="wrap">Drawn from the GreenSQL benchmark harness.</footer>
+
+
+</body>
+</html>

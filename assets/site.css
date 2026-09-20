@@ -1,0 +1,50 @@
+/* GreenSQL site theme — shared by every page.
+   Colour tokens, base typography and the site nav. Page-specific rules
+   (figures, tables, the estimator form) stay inline in each page. */
+
+:root{
+  --bg:#F3F5F1; --panel:#FFFFFF; --folder:#E6EBE4; --entry:#DCE8DF; --sub:#F7F9F6;
+  --ink:#18221D; --muted:#5A675F; --line:#B7C2BA; --faint:#CDD5CF;
+  --accent:#1D6B45; --accent-ink:#FFFFFF; --energy:#B35609; --thermal:#B3264A; --server:#2A5DB0; --client:#7A6414;
+  --seg-ctl:#D9DFDA; --seg-warm:#EDE6D6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1411; --panel:#17211C; --folder:#1B2621; --entry:#1D3026; --sub:#131B17;
+    --ink:#E3EAE5; --muted:#9AA8A0; --line:#3E4D45; --faint:#2C3832;
+    --accent:#5CBD8E; --accent-ink:#0E1411; --energy:#F0A04B; --thermal:#F07A93; --server:#86ABF3; --client:#D6BF66;
+    --seg-ctl:#2A342F; --seg-warm:#3A3326;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1411; --panel:#17211C; --folder:#1B2621; --entry:#1D3026; --sub:#131B17;
+  --ink:#E3EAE5; --muted:#9AA8A0; --line:#3E4D45; --faint:#2C3832;
+  --accent:#5CBD8E; --accent-ink:#0E1411; --energy:#F0A04B; --thermal:#F07A93; --server:#86ABF3; --client:#D6BF66;
+  --seg-ctl:#2A342F; --seg-warm:#3A3326;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  padding-inline:20px;padding-block:28px 64px;margin:0}
+.wrap{max-width:1080px;margin-inline:auto;width:100%}
+.wide{max-width:1480px;margin-inline:auto}
+header{display:grid;gap:10px;margin-block-end:28px}
+.eyebrow{font:500 12px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font:600 clamp(28px,4vw,40px)/1.1 "IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font:600 22px/1.25 "IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;margin:0 0 6px;text-wrap:balance}
+p{margin:0;max-width:68ch}
+.lede{color:var(--muted);font-size:16px}
+section{display:grid;gap:14px;margin-block:44px}
+code,.mono{font:13px "IBM Plex Mono",ui-monospace,monospace}
+footer{color:var(--muted);font-size:13px;margin-top:56px}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- site nav ---- */
+.sitenav{display:flex;flex-wrap:wrap;align-items:center;gap:8px;max-width:1080px;margin-inline:auto;
+  width:100%;border-bottom:1px solid var(--faint);padding-block-end:12px;margin-block-end:28px}
+.sitenav .brand{font:600 13px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--accent);margin-inline-end:auto}
+.sitenav a{font:500 13px/1 "IBM Plex Sans",sans-serif;color:var(--muted);text-decoration:none;
+  padding:7px 12px;border-radius:999px;border:1px solid transparent}
+.sitenav a:hover{color:var(--accent);border-color:var(--line)}
+.sitenav a[aria-current="page"]{background:var(--entry);border-color:var(--accent);color:var(--accent);font-weight:600}

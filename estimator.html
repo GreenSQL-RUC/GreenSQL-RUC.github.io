@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Benchmark Runtime Estimator</title>
+<meta name="description" content="Work out how long a GreenSQL sweep will take: set the shared parameters, split the runtime axis into stacked ranges with their own query counts and batch sizes, and see the total and its factor breakdown update live.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GreenSQL">
+<meta property="og:title" content="Benchmark Runtime Estimator">
+<meta property="og:description" content="Work out how long a GreenSQL sweep will take: set the shared parameters, split the runtime axis into stacked ranges with their own query counts and batch sizes, and see the total and its factor breakdown update live.">
+<meta property="og:url" content="https://greensql-ruc.github.io/estimator.html">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="https://greensql-ruc.github.io/estimator.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%231D6B45'/%3E%3Cpath d='M4 11.5V4.5h1.6l2.4 4.2 2.4-4.2H12v7h-1.5V7.2L8.4 10.8h-.8L5.5 7.2v4.3z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+/* ---- layout ---- */
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+/* ---- panels ---- */
+.panel{display:block;margin:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
+.panel + .panel{margin-top:18px}
+.group-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
+.group-title{font:600 12px/1.3 "IBM Plex Sans",sans-serif;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);margin:0;padding:0}
+.group-title .sub{font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)}
+.group-note{font-size:12.5px;color:var(--muted);margin:0}
+.chips + .group-note{margin-top:12px}
+.sublabel{font-size:12px;font-weight:500;color:var(--muted);margin:0 0 8px}
+
+/* ---- number fields ---- */
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.fields-3{grid-template-columns:1fr 1fr 1fr}
+@media (max-width:480px){.fields,.fields-3{grid-template-columns:1fr 1fr}}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-size:13px;font-weight:500;color:var(--ink)}
+.field .hint{font-size:12px;color:var(--muted)}
+.field input{font:500 15px "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;
+  color:var(--ink);background:var(--sub);border:1px solid var(--line);border-radius:8px;
+  padding:9px 11px;width:100%;-moz-appearance:textfield}
+.field input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.field input[readonly]{color:var(--muted);background:transparent;border-style:dashed;cursor:default}
+
+/* ---- toggle chips ---- */
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{padding:0}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.chip label{display:inline-flex;align-items:center;justify-content:center;min-width:3ch;cursor:pointer;
+  padding:9px 14px;border-radius:8px;border:1px solid var(--line);background:var(--sub);user-select:none;
+  font:500 15px "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;color:var(--ink);
+  transition:background .12s,border-color .12s,color .12s}
+.chip input:checked + label{background:var(--entry);border-color:var(--accent);color:var(--accent)}
+.chip input:focus-visible + label{outline:2px solid var(--accent);outline-offset:2px}
+.sumtag{font:600 13px "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;
+  color:var(--accent);background:var(--entry);padding:3px 10px;border-radius:999px;white-space:nowrap}
+
+/* ---- range cards ---- */
+.gcard{background:var(--sub);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+.gcard:last-of-type{margin-bottom:0}
+.gcard-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.gtag{font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.gcard-head .spacer{flex:1}
+.grm{border:1px solid var(--line);background:var(--panel);color:var(--muted);width:26px;height:26px;
+  border-radius:8px;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;
+  transition:color .12s,border-color .12s}
+.grm:hover:not(:disabled){color:var(--energy);border-color:var(--energy)}
+.grm:disabled{opacity:.35;cursor:not-allowed}
+.grm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.gcard .fields{margin-bottom:14px}
+.gcard .field input{background:var(--panel)}
+.gcard .field input[readonly]{background:transparent}
+.gcard .chip label{background:var(--panel)}
+.gcontrib{margin:12px 0 0;font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px}
+.gcontrib b{color:var(--ink);font-weight:600;font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.addbtn{display:inline-flex;align-items:center;gap:7px;margin-top:14px;background:var(--accent);
+  color:var(--accent-ink);border:0;font:600 13px "IBM Plex Sans",sans-serif;padding:10px 16px;
+  border-radius:8px;cursor:pointer}
+.addbtn:hover{filter:brightness(1.08)}
+.addbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.addbtn .plus{font-size:16px;line-height:1}
+
+/* ---- result rail ---- */
+.rail{position:sticky;top:24px}
+.result{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.result .top{padding:20px 20px 16px}
+.kicker{font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 10px}
+.headline{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.headline .num{font:600 46px/1 "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;
+  color:var(--energy);letter-spacing:-.02em}
+.headline .unit{font-size:15px;color:var(--muted);font-weight:500}
+.days{margin:8px 0 0;font-size:13px;color:var(--muted)}
+.days b{color:var(--ink);font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--faint);border-top:1px solid var(--faint)}
+.tile{background:var(--panel);padding:13px 16px;min-width:0}
+.tile.q{grid-column:1 / -1;background:var(--entry)}
+.tile .t-label{font:500 11px "IBM Plex Sans",sans-serif;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 4px}
+.tile.q .t-label{color:var(--accent)}
+.tile .t-val{font:600 19px "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;
+  color:var(--ink);margin:0;overflow-wrap:anywhere}
+.tile.q .t-val{color:var(--accent)}
+.chain{padding:16px 20px 20px;border-top:1px solid var(--faint)}
+.chain h3{font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 10px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.chain h3 .h-sub{font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted);font-size:11px}
+.chain h3.spaced{margin-top:18px}
+.factor{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:8px;padding:5px 0;font-size:13px}
+.factor .fname{color:var(--muted)}
+.factor .fval{font:600 13px "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;color:var(--ink)}
+.factor.derived .fval{color:var(--accent)}
+.factor.subtotal{border-top:1px dashed var(--line);margin-top:6px;padding-top:8px}
+.factor.subtotal .fname{color:var(--ink);font-weight:600}
+.chain .rule{border:0;border-top:1px solid var(--faint);margin:14px 0 12px}
+.chain .product{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:8px}
+.chain .product .fname{font-weight:600;color:var(--ink);font-size:13px}
+.chain .product .fval{font:600 15px "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;color:var(--ink)}
+.formula{margin-top:16px;font-size:12.5px;color:var(--muted);max-width:64ch;line-height:1.6}
+.formula code{background:var(--sub);padding:1px 6px;border-radius:5px;border:1px solid var(--faint);color:var(--muted)}
+
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+
+<nav class="sitenav" aria-label="Site sections">
+  <span class="brand">GreenSQL</span>
+  <a href="./">Harness map</a>
+  <a href="estimator.html" aria-current="page">Runtime estimator</a>
+</nav>
+
+<header class="wrap">
+  <div class="eyebrow">PostgreSQL benchmark planning</div>
+  <h1>Benchmark Runtime Estimator</h1>
+  <p class="lede">Set the shared sweep parameters, then split the runtime axis into stacked ranges. Each range carries its own query count and batch selection, and its queries run at the range midpoint. Total time is the shared multiplier times the sum of every range's runtime work.</p>
+</header>
+
+<main class="wrap">
+  <div class="grid">
+    <!-- CONTROLS -->
+    <div>
+      <section class="panel">
+        <div class="group-head">
+          <h2 class="group-title">Shared parameters</h2>
+          <span class="group-note">consistent across all ranges</span>
+        </div>
+        <div class="fields">
+          <div class="field">
+            <label for="batches"># of batches</label>
+            <input id="batches" type="number" min="0" step="1" value="3" inputmode="numeric">
+            <span class="hint">repeats per configuration</span>
+          </div>
+          <div class="field">
+            <label for="warmup">Warmup</label>
+            <input id="warmup" type="number" min="0" step="1" value="2" inputmode="numeric">
+            <span class="hint">added to each range's batch sum</span>
+          </div>
+          <div class="field">
+            <label for="pg">PG versions</label>
+            <input id="pg" type="number" min="0" step="1" value="1" inputmode="numeric">
+            <span class="hint">Postgres versions tested</span>
+          </div>
+          <div class="field">
+            <label for="indexing">Indexing setups</label>
+            <input id="indexing" type="number" min="0" step="1" value="2" inputmode="numeric">
+            <span class="hint">index configurations</span>
+          </div>
+          <div class="field">
+            <label for="distribution">Data distribution</label>
+            <input id="distribution" type="number" min="0" step="1" value="2" inputmode="numeric">
+            <span class="hint">data distributions</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <fieldset>
+          <div class="group-head">
+            <legend class="group-title">DB scales <span class="sub">(t)</span></legend>
+            <span class="sumtag" id="scaleSum">&#931; = 27</span>
+          </div>
+          <div class="chips" id="scaleChips"></div>
+          <p class="group-note">Sum of the selected scale sizes &mdash; e.g. <span class="mono">1 + 3 + 5 = 9</span>.</p>
+        </fieldset>
+      </section>
+
+      <section class="panel">
+        <div class="group-head">
+          <h2 class="group-title">Runtime ranges</h2>
+          <span class="group-note">stacked &middot; each starts where the last ends</span>
+        </div>
+        <div id="groups"></div>
+        <button class="addbtn" id="addGroup" type="button"><span class="plus">+</span> Add range</button>
+      </section>
+    </div>
+
+    <!-- RESULT RAIL -->
+    <div class="rail">
+      <div class="result">
+        <div class="top">
+          <p class="kicker">Estimated total time</p>
+          <div class="headline">
+            <span class="num" id="hVal">0</span>
+            <span class="unit">hours</span>
+          </div>
+          <p class="days" id="daysLine" hidden></p>
+        </div>
+        <div class="tiles">
+          <div class="tile q">
+            <p class="t-label">Total queries</p>
+            <p class="t-val" id="qVal">3</p>
+          </div>
+          <div class="tile">
+            <p class="t-label">Total (s)</p>
+            <p class="t-val" id="sVal">0</p>
+          </div>
+          <div class="tile">
+            <p class="t-label">Total (min)</p>
+            <p class="t-val" id="mVal">0</p>
+          </div>
+        </div>
+        <div class="chain">
+          <h3>Shared multiplier</h3>
+          <div class="factor"><span class="fname"># of batches</span><span class="fval" id="fBatches">3</span></div>
+          <div class="factor derived"><span class="fname">db scales (t)</span><span class="fval" id="fScales">27</span></div>
+          <div class="factor"><span class="fname">PG versions</span><span class="fval" id="fPg">1</span></div>
+          <div class="factor"><span class="fname">Indexing setups</span><span class="fval" id="fIndexing">2</span></div>
+          <div class="factor"><span class="fname">Data distribution</span><span class="fval" id="fDistribution">2</span></div>
+          <div class="factor subtotal"><span class="fname">subtotal (&times;)</span><span class="fval" id="fShared">324</span></div>
+
+          <h3 class="spaced">Runtime ranges <span class="h-sub">queries &times; mid &times; batchnum</span></h3>
+          <div id="railGroups"></div>
+          <div class="factor subtotal"><span class="fname">&#931; ranges</span><span class="fval" id="fSumContrib">0</span></div>
+
+          <hr class="rule">
+          <div class="product"><span class="fname">Total (seconds)</span><span class="fval" id="fTotal">0</span></div>
+        </div>
+      </div>
+      <p class="formula">Each range's queries run at its midpoint <span class="mono">(start + end) / 2</span>. <code>total = (batches &times; db scales &times; pg &times; indexing &times; distribution) &times; &#931; ranges(queries &times; mid &times; batchnum(+w))</code></p>
+    </div>
+  </div>
+</main>
+
+<script>
+  const SCALE_SIZES = Array.from({ length: 20 }, (_, i) => i + 1);
+  const SCALE_DEFAULT = new Set([1, 3, 5, 8, 10]);
+  const BATCH_SIZES = [1, 2, 4, 8, 16];
+
+  // stacked runtime ranges
+  const SEED_GROUPS = [
+    { min: 0.1, max: 0.5, queries: 1, batches: [1, 2, 4, 8, 16] },
+    { min: 0.5, max: 1.0, queries: 1, batches: [1, 2, 4, 8] },
+    { min: 1.0, max: 1.5, queries: 1, batches: [1, 2, 4] },
+  ];
+
+  const nf = (max = 2) => new Intl.NumberFormat(undefined, { maximumFractionDigits: max });
+  const fmtNum = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+  const fmtInt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+  const trim = x => String(+(+x).toFixed(4));
+
+  // seconds -> "X s · Y min · Z h · W d", with h/d shown only when > 1
+  function durText(sec) {
+    const parts = [`${fmtNum.format(sec)} s`, `${nf(2).format(sec / 60)} min`];
+    const h = sec / 3600;
+    if (h > 1) parts.push(`${nf(2).format(h)} h`);
+    const d = sec / 86400;
+    if (d > 1) parts.push(`${nf(2).format(d)} d`);
+    return parts.join(" · ");
+  }
+
+  const num = el => {
+    const v = parseFloat(el.value);
+    return Number.isFinite(v) && v >= 0 ? v : 0;
+  };
+
+  // shared scale chips
+  const scaleHost = document.getElementById("scaleChips");
+  SCALE_SIZES.forEach(v => {
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.innerHTML =
+      `<input type="checkbox" id="scale-${v}" value="${v}" data-scale>` +
+      `<label for="scale-${v}">${v}</label>`;
+    if (SCALE_DEFAULT.has(v)) chip.querySelector("input").checked = true;
+    scaleHost.appendChild(chip);
+  });
+  const scaleSum = () =>
+    [...document.querySelectorAll("input[data-scale]:checked")].reduce((a, el) => a + Number(el.value), 0);
+
+  // runtime ranges
+  const groupsHost = document.getElementById("groups");
+  let gid = 0;
+
+  function makeGroup(seed) {
+    const id = ++gid;
+    const card = document.createElement("div");
+    card.className = "gcard";
+    card.dataset.gid = id;
+    const chips = BATCH_SIZES.map(v =>
+      `<div class="chip"><input type="checkbox" id="b-${id}-${v}" value="${v}" data-batch${seed.batches.includes(v) ? " checked" : ""}>` +
+      `<label for="b-${id}-${v}">${v}</label></div>`
+    ).join("");
+    card.innerHTML =
+      `<div class="gcard-head">` +
+        `<span class="gtag" data-label>Range</span>` +
+        `<span class="spacer"></span>` +
+        `<span class="sumtag" data-batchnum>+w 0</span>` +
+        `<button class="grm" type="button" title="Remove range" aria-label="Remove range">✕</button>` +
+      `</div>` +
+      `<div class="fields fields-3">` +
+        `<div class="field"><label>Start (s)</label><input type="number" min="0" step="0.1" value="${seed.min}" data-min inputmode="decimal"></div>` +
+        `<div class="field"><label>End (s)</label><input type="number" min="0" step="0.1" value="${seed.max}" data-max inputmode="decimal"></div>` +
+        `<div class="field"><label># of queries</label><input type="number" min="0" step="1" value="${seed.queries}" data-queries inputmode="numeric"></div>` +
+      `</div>` +
+      `<p class="sublabel">Batch sizes</p>` +
+      `<div class="chips">${chips}</div>` +
+      `<p class="gcontrib"><span>mid <b data-mid>0</b> s</span><span>contributes <b data-contrib>0 s</b></span></p>`;
+    card.querySelector(".grm").addEventListener("click", () => { card.remove(); recompute(); });
+    groupsHost.appendChild(card);
+  }
+
+  SEED_GROUPS.forEach(makeGroup);
+
+  document.getElementById("addGroup").addEventListener("click", () => {
+    const cards = [...groupsHost.querySelectorAll(".gcard")];
+    const last = cards[cards.length - 1];
+    let start = 1, width = 0.5;
+    if (last) {
+      const lmin = num(last.querySelector("[data-min]"));
+      const lmax = num(last.querySelector("[data-max]"));
+      start = lmax;
+      width = Math.max(0.1, lmax - lmin) || 0.5;
+    }
+    makeGroup({ min: start, max: +(start + width).toFixed(4), queries: 1, batches: [...BATCH_SIZES] });
+    recompute();
+  });
+
+  const railGroups = document.getElementById("railGroups");
+
+  function recompute() {
+    const batches = num(document.getElementById("batches"));
+    const warmup = num(document.getElementById("warmup"));
+    const pg = num(document.getElementById("pg"));
+    const indexing = num(document.getElementById("indexing"));
+    const distribution = num(document.getElementById("distribution"));
+    const scales = scaleSum();
+    const shared = batches * scales * pg * indexing * distribution;
+
+    const cards = [...groupsHost.querySelectorAll(".gcard")];
+    let sumContrib = 0;
+    let totalQueries = 0;
+    let prevMax = null;
+    railGroups.innerHTML = "";
+
+    cards.forEach((card, i) => {
+      const n = i + 1;
+      const minInput = card.querySelector("[data-min]");
+      const maxInput = card.querySelector("[data-max]");
+      // stacked: every range but the first starts where the previous ended
+      let min;
+      if (i === 0) { minInput.readOnly = false; min = num(minInput); }
+      else { minInput.readOnly = true; min = prevMax; minInput.value = trim(min); }
+      let max = num(maxInput);
+      const effMax = Math.max(min, max);
+
+      const queries = num(card.querySelector("[data-queries]"));
+      const batchSum = [...card.querySelectorAll("input[data-batch]:checked")].reduce((a, el) => a + Number(el.value), 0);
+      const batchnum = batchSum + warmup;
+
+      const mid = (min + effMax) / 2;
+      const contrib = queries * mid * batchnum;
+
+      sumContrib += contrib;
+      totalQueries += queries;
+      prevMax = effMax;
+
+      card.querySelector("[data-label]").textContent = `Range ${n}`;
+      card.querySelector("[data-batchnum]").textContent = `Σ ${batchSum} · +w ${batchnum}`;
+      card.querySelector("[data-mid]").textContent = fmtNum.format(mid);
+      card.querySelector("[data-contrib]").textContent = durText(shared * contrib);
+
+      const row = document.createElement("div");
+      row.className = "factor";
+      row.innerHTML =
+        `<span class="fname">Range ${n} · ${trim(min)}–${trim(effMax)}s · ${fmtNum.format(queries)} × ${fmtNum.format(mid)} × ${fmtNum.format(batchnum)}</span>` +
+        `<span class="fval">${fmtNum.format(contrib)}</span>`;
+      railGroups.appendChild(row);
+    });
+
+    groupsHost.querySelectorAll(".grm").forEach(b => { b.disabled = cards.length <= 1; });
+
+    const totalSec = shared * sumContrib;
+    const totalMin = totalSec / 60;
+    const totalHr = totalSec / 3600;
+
+    document.getElementById("scaleSum").textContent = `Σ = ${scales}`;
+    document.getElementById("qVal").textContent = fmtInt.format(totalQueries);
+    document.getElementById("hVal").textContent = nf(3).format(totalHr);
+    document.getElementById("sVal").textContent = fmtNum.format(totalSec);
+    document.getElementById("mVal").textContent = nf(2).format(totalMin);
+
+    const daysLine = document.getElementById("daysLine");
+    if (totalHr >= 24) {
+      daysLine.hidden = false;
+      daysLine.innerHTML = `≈ <b>${nf(2).format(totalHr / 24)} days</b> of continuous runtime`;
+    } else {
+      daysLine.hidden = true;
+    }
+
+    document.getElementById("fBatches").textContent = fmtNum.format(batches);
+    document.getElementById("fScales").textContent = fmtNum.format(scales);
+    document.getElementById("fPg").textContent = fmtNum.format(pg);
+    document.getElementById("fIndexing").textContent = fmtNum.format(indexing);
+    document.getElementById("fDistribution").textContent = fmtNum.format(distribution);
+    document.getElementById("fShared").textContent = fmtNum.format(shared);
+    document.getElementById("fSumContrib").textContent = fmtNum.format(sumContrib);
+    document.getElementById("fTotal").textContent = fmtNum.format(totalSec);
+  }
+
+  document.addEventListener("input", recompute);
+  document.addEventListener("change", recompute);
+  recompute();
+</script>
+
+</body>
+</html>
