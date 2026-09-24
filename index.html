@@ -28,6 +28,7 @@ figure{margin:0;display:grid;gap:10px}
 .intro{display:grid;gap:8px}
 section > .wide{width:100%}
 figcaption{color:var(--muted);font-size:14px;max-width:80ch}
+figcaption code{overflow-wrap:anywhere}
 .two{display:grid;grid-template-columns:minmax(0,580px) minmax(0,1fr);gap:28px;align-items:start}
 @media (max-width:860px){.two{grid-template-columns:1fr}}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:4px}
@@ -42,6 +43,9 @@ tr:last-child td{border-bottom:0}
 td code{font-size:12.5px;white-space:nowrap}
 td code.wrapok{white-space:normal}
 td .cols code{white-space:normal}
+th .thsub{font-weight:400;text-transform:none;letter-spacing:0}
+th code{font-size:12px;text-transform:none}
+td.num{font:500 13px "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
 .src{display:inline-flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap}
 .sw{width:22px;height:0;border-top:3px solid currentColor;display:inline-block}
 .c-energy{color:var(--energy)} .c-thermal{color:var(--thermal)} .c-server{color:var(--server)}
@@ -119,7 +123,7 @@ ul.plain{margin:0;padding-left:20px;display:grid;gap:6px;max-width:80ch}
     <p>Everything starts at a <code>make</code> target, which primes sudo, loads the <code>msr</code> module and passes one bundle of environment variables down. Drivers in <code>run/</code> sequence the work; the compiled runners in <code>bin/</code> do the measuring. On a narrow screen the figure scrolls sideways.</p>
   </div>
   <figure class="wide">
-    <div class="scroll"><svg viewBox="0 0 1440 920" role="img" aria-label="System map of the GreenSQL harness: the Makefile drives test scripts, run drivers and C runners; runners read RAPL energy and sysfs thermal sensors from the kernel, run SQL through psql on the PostgreSQL clusters, and append CSV rows under logs, which thermal_check.py reads back." class="fig-svg fig-map">
+    <div class="scroll"><svg viewBox="0 0 1440 920" role="img" aria-label="System map of the GreenSQL harness: the Makefile drives test scripts, run drivers and C runners; runners read RAPL energy and sysfs thermal sensors from the kernel, run SQL through psql on the PostgreSQL clusters, and append CSV rows under logs, which thermal_check.py reads back. For the slope sample, run_warm_stepup.sh replays an order file from logs/slope_sample/ and writes its runs there." class="fig-svg fig-map">
 <defs>
   <marker id="a-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-ink"/></marker>
   <marker id="a-energy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-energy"/></marker>
@@ -139,6 +143,7 @@ ul.plain{margin:0;padding-left:20px;display:grid;gap:6px;max-width:80ch}
 <text x="34" y="292" class="t-m">run · cold · write</text>
 <text x="34" y="308" class="t-m">plans · outputs</text>
 <text x="34" y="373" class="t-m t-strong">warm-stepup</text>
+<text x="34" y="389" class="t-s">ORDER_FILE · LOGS_ROOT</text>
 <text x="34" y="422" class="t-m">matrix</text>
 <text x="34" y="469" class="t-m">set-parameters</text>
 <text x="34" y="501" class="t-m">reset-parameters</text>
@@ -232,7 +237,7 @@ ul.plain{margin:0;padding-left:20px;display:grid;gap:6px;max-width:80ch}
 <text x="944" y="462" class="t-m">warehouse · tpch_write</text>
 <text x="944" y="488" class="t-s">testing GUCs set by ALTER SYSTEM</text>
 <text x="944" y="504" class="t-s">psql always runs as postgres</text>
-<rect x="1230" y="56" width="190" height="420" rx="7" class="folder"/>
+<rect x="1230" y="56" width="190" height="512" rx="7" class="folder"/>
 <text x="1244" y="80" class="t-h">logs/</text>
 <text x="1284" y="80" class="t-hs">append-only CSV</text>
 <rect x="1242" y="96" width="166" height="128" rx="4" class="sub"/>
@@ -252,14 +257,21 @@ ul.plain{margin:0;padding-left:20px;display:grid;gap:6px;max-width:80ch}
 <rect x="1242" y="352" width="166" height="40" rx="4" class="item"/>
 <text x="1252" y="369" class="t-m10">&lt;guc&gt;/ · db_scale</text>
 <text x="1252" y="383" class="t-s">test/ sweep results</text>
-<text x="1242" y="416" class="t-s">Refuses to append to a</text>
-<text x="1242" y="430" class="t-s">CSV whose header differs.</text>
-<rect x="1230" y="496" width="92" height="44" rx="6" class="folder"/>
-<text x="1242" y="515" class="t-h13">plans/</text>
-<text x="1242" y="531" class="t-s">plan_builder</text>
-<rect x="1328" y="496" width="92" height="44" rx="6" class="folder"/>
-<text x="1340" y="515" class="t-h13">outputs/</text>
-<text x="1340" y="531" class="t-s">output_runner</text>
+<rect x="1242" y="400" width="166" height="118" rx="4" class="sub"/>
+<text x="1252" y="418" class="t-m t-strong">slope_sample/</text>
+<text x="1262" y="438" class="t-m10">order_&lt;tier&gt;.txt</text>
+<text x="1262" y="454" class="t-m10">manifest.csv</text>
+<text x="1262" y="470" class="t-m10">warm_stepup/</text>
+<text x="1272" y="486" class="t-m10">&lt;tier&gt;_&lt;stamp&gt;/</text>
+<text x="1272" y="504" class="t-s">same files as above</text>
+<text x="1242" y="540" class="t-s">Refuses to append to a</text>
+<text x="1242" y="554" class="t-s">CSV whose header differs.</text>
+<rect x="1230" y="584" width="92" height="44" rx="6" class="folder"/>
+<text x="1242" y="603" class="t-h13">plans/</text>
+<text x="1242" y="619" class="t-s">plan_builder</text>
+<rect x="1328" y="584" width="92" height="44" rx="6" class="folder"/>
+<text x="1340" y="603" class="t-h13">outputs/</text>
+<text x="1340" y="619" class="t-s">output_runner</text>
 <rect x="20" y="720" width="490" height="186" rx="7" class="folder"/>
 <text x="34" y="744" class="t-h">build/</text>
 <text x="86" y="744" class="t-hs">provision · load · generate · reads schema/</text>
@@ -284,15 +296,17 @@ ul.plain{margin:0;padding-left:20px;display:grid;gap:6px;max-width:80ch}
 <rect x="610" y="720" width="230" height="186" rx="7" class="folder"/>
 <text x="624" y="744" class="t-h">queries/</text>
 <text x="694" y="744" class="t-hs">all SQL</text>
-<text x="624" y="772" class="t-m">tpch/tpch-queries</text>
-<text x="826" y="772" class="t-m t-muted" text-anchor="end">53</text>
-<text x="624" y="793" class="t-m">tpch/SQLStorm</text>
-<text x="826" y="793" class="t-m t-muted" text-anchor="end">17 036</text>
-<text x="624" y="814" class="t-m">tpch/Core · Functions</text>
-<text x="624" y="835" class="t-m">estat/ · warehouse/</text>
-<text x="624" y="856" class="t-m">equivalent/ · slow/</text>
-<text x="624" y="877" class="t-m">write/tpch</text>
-<text x="826" y="877" class="t-m t-muted" text-anchor="end">35</text>
+<text x="624" y="770" class="t-m">tpch/tpch-queries</text>
+<text x="826" y="770" class="t-m t-muted" text-anchor="end">53</text>
+<text x="624" y="788" class="t-m">tpch/SQLStorm</text>
+<text x="826" y="788" class="t-m t-muted" text-anchor="end">17 036</text>
+<text x="624" y="806" class="t-m10">tpch/sqlstorm_slope/&lt;tier&gt;</text>
+<text x="826" y="806" class="t-m t-muted" text-anchor="end">250</text>
+<text x="624" y="824" class="t-m">tpch/Core · Functions</text>
+<text x="624" y="842" class="t-m">estat/ · warehouse/</text>
+<text x="624" y="860" class="t-m">equivalent/ · slow/</text>
+<text x="624" y="878" class="t-m">write/tpch</text>
+<text x="826" y="878" class="t-m t-muted" text-anchor="end">35</text>
 <text x="944" y="752" class="t-hs">Line colour = what the line carries</text>
 <path d="M944,772 L984,772" class="ln energy"/>
 <text x="996" y="776" class="t-l">RAPL energy counters</text>
@@ -348,15 +362,19 @@ ul.plain{margin:0;padding-left:20px;display:grid;gap:6px;max-width:80ch}
 <path d="M725,720 L725,476" class="halo"/>
 <path d="M725,720 L725,476" class="ln accent" marker-end="url(#a-accent)"/>
 <text x="732" y="556" class="t-l t-accent">QUERY_DIR:</text>
-<text x="732" y="570" class="t-l t-accent">file or folder</text></svg></div>
+<text x="732" y="570" class="t-l t-accent">file or folder</text>
+<path d="M1242,434 L1216,434 L1216,618 L470,618 L470,600" class="halo"/>
+<path d="M1242,434 L1216,434 L1216,618 L470,618 L470,600" class="ln accent" marker-end="url(#a-accent)"/>
+<text x="880" y="611" class="t-l t-accent" text-anchor="middle">ORDER_FILE replay: one line = one entry</text></svg></div>
     <figcaption class="wrap">Folders are the grey containers. Green marks the main benchmark path: <code>make warm-stepup</code> runs <code>run_warm_stepup.sh</code>, which cold-starts the cluster and then hands one query file at a time to <code>query_runner</code>. Only the runners read RAPL or the thermal sensors. Where two lines cross with a gap, one passes over the other; they do not join. The clusters shown are what this laptop runs today; <code>bootstrap_ubuntu.sh</code> now installs 15 to 18 at pinned minors.</figcaption>
+    <figcaption class="wrap">For the slope sample, <code>run_warm_stepup.sh</code> replays a pre-generated order file (seeded shuffle; each line is one entry, and a repeated line is a repeat, so <code>REPEATS=1</code>). It writes under <code>LOGS_ROOT=logs/slope_sample/warm_stepup/&lt;tier&gt;_&lt;stamp&gt;/</code> and saves what it replayed as <code>run_order_&lt;run_id&gt;.txt</code>. <code>manifest.csv</code> records why each staged query was picked. That run pinned the clock at 2.5 GHz and set <code>statement_timeout</code> to 60 s. In the breadth tier it skipped the 16-copy batch whenever a warm single copy took more than 6 s (83 of 222 queries). The reference tier was 28 queries × 10 repeats = 280 entries (12 h 02 min); breadth was 222 queries × 3 repeats = 666 entries (19 h 38 min).</figcaption>
   </figure>
 </section>
 
 <section>
   <div class="wrap intro">
     <h2>Where each number comes from</h2>
-    <p>One warm step-up entry, and a zoom into its largest batch. The values are the real ones logged for TPC-H q01 on <code>tpch_idx</code> in run 3, the gated run with the clock pinned at 1.7 GHz.</p>
+    <p>One warm step-up entry, and a zoom into its largest batch. The values are the real ones logged for TPC-H q01 on <code>tpch_idx</code> in run 3 (1.7 GHz, 53 TPC-H queries), the gated run before the slope sample. The anatomy is the same at 2.5 GHz; only the values differ.</p>
   </div>
   <figure class="wide">
     <div class="scroll"><svg viewBox="0 0 1200 600" role="img" aria-label="Timeline of one warm step-up entry (cold start, thermal gate, two warm-ups, batches of 1 to 16 copies) and a zoom into the 16-copy batch showing when RAPL, the wall clock, the 200 ms sensor sampler, per-copy EXPLAIN parsing and rusage are read, with the values logged for q01 in run 3." class="fig-svg fig-batch">
@@ -562,6 +580,7 @@ ul.plain{margin:0;padding-left:20px;display:grid;gap:6px;max-width:80ch}
 <text x="890" y="564" class="t-m10 t-strong">→ query_timing_&lt;db&gt;.csv (batch row)</text>
 <text x="890" y="580" class="t-m10 t-strong">→ query_samples_&lt;db&gt;.csv (16 copy rows)</text></svg></div>
     <figcaption class="wrap">RAPL is read exactly twice per batch, at the edges of the psql process, so process start, connection and all sixteen copies land in one energy number. Figure 3 is how the harness separates them. The sampler runs in its own thread and never touches psql. Energy the PostgreSQL backend spends shows up in RAPL only, because the backend is not a child of the runner and so is missing from rusage.</figcaption>
+    <figcaption class="wrap">The parts outside the batches are not free. In the slope sample, restart and ready took 3.74 s, the gate waited 2.78 s per entry on average, and each warm-up or batch process started after a 77 ms gap. Restart and gate together are 85 % of a <code>{1,16}</code> entry for queries under 2 J, but 3 % above 120 J (a <code>{1,16}</code> entry measures batches of 1 and 16 copies). The <a href="estimator.html">runtime estimator</a> uses these numbers.</figcaption>
   </figure>
 </section>
 
@@ -614,18 +633,41 @@ ul.plain{margin:0;padding-left:20px;display:grid;gap:6px;max-width:80ch}
 <text x="319.85" y="129.00150537634408" class="t-l t-strong" text-anchor="end">slope 25.1 J per extra copy</text>
 <path d="M146,243 L68.0,251.2035185185185" class="ln faint"/>
 <text x="150" y="247" class="t-l t-muted">intercept 1.6 J at N = 0</text></svg></div>
-      <figcaption>q01 in run 3, mean of three repeats per batch size, with the least-squares line. One copy took 27 J; sixteen took 403 J.</figcaption>
+      <figcaption>q01 in run 3 (1.7 GHz), mean of three repeats per batch size, with the least-squares line. One copy took 27 J; sixteen took 403 J.</figcaption>
     </figure>
     <div style="display:grid;gap:12px">
-      <p>A batch's energy has two parts: a fixed cost for starting psql, connecting and tearing down, and a cost per copy of the query. Fitting a straight line through the step-up separates them. The slope is the query's own marginal energy; the intercept is the process overhead that a single-copy measurement would wrongly charge to the query.</p>
+      <p>A batch's energy is E(N) = F + b·N: an overhead F for each psql process, plus a cost b for each copy. Fitting a straight line through the step-up separates them. b is the query's own marginal energy, and F is what a single-copy measurement would wrongly charge to the query.</p>
       <div class="stats">
         <div class="stat"><b>25.1 J</b><span>per extra copy (slope)</span></div>
-        <div class="stat"><b>1.6 J</b><span>fixed per process (intercept)</span></div>
+        <div class="stat"><b>1.6 J</b><span>per-process overhead (intercept)</span></div>
         <div class="stat"><b>9.1 W</b><span>package power, every size</span></div>
       </div>
-      <p><code>test/thermal_check.py</code> reports how far a quick two-point slope from 1 and 16 copies lands from this full fit. With the gated start and the clock pinned, the median error across all 53 queries fell to 0.59%, from 1.28% before the thermal protocol.</p>
+      <p>F is not purely start-up cost. In the slope sample its median is 0.58 J. For 4-worker plans it stays near 0.5 J whatever the query (Spearman ρ(F, E₁) = +0.20). For serial and 0–2-worker plans it grows with the query (ρ = +0.83), from about 0.36 J to about 1.9 J in the 40–75 J band.</p>
+      <p>A straight line is safe to fit. There were no throttle events at any N, and E(N) is linear (median curvature +0.17 %). Long batches run up to 8&nbsp;°C warmer (band-median peak 82&nbsp;°C), which shows only as a +0.18 % curvature in the heavy bands.</p>
+      <p>In run 3 (1.7 GHz, 53 TPC-H queries), <code>test/thermal_check.py</code> found that a two-point slope from 1 and 16 copies landed a median 0.59 % from the full fit, down from 1.28 % before the thermal protocol. The slope sample (2.5 GHz, 250 SQLStorm queries) instead scores a single repeat against the 10-repeat slope; the table below gives that per band.</p>
     </div>
   </div>
+</section>
+
+<section id="how-many-copies">
+  <div class="wrap intro">
+    <h2>How many copies are enough</h2>
+    <p>Each config estimates the per-copy energy b from one repeat. <code>{1}</code> is E₁ alone. <code>{1,N}</code> is (E<sub>N</sub>&nbsp;−&nbsp;E₁)/(N&nbsp;−&nbsp;1). <code>E<sub>N</sub>/N</code> is the plain batch average. <code>full</code> is the least-squares fit over N = 1, 2, 4, 8, 16. The truth is the 10-repeat slope, scored leave-one-repeat-out (median SE 0.18 %). Bands are by single-copy energy E₁, from the slope sample at 2.5 GHz.</p>
+  </div>
+  <div class="wrap tbl"><table class="bands"><thead><tr><th>Band (E₁)</th><th><code>{1,16}</code> median error, one repeat</th><th>Cheapest for 95 %<br><span class="thsub">9 in 10 queries within 5 %</span></th><th>Cheapest for 99 %<br><span class="thsub">median query within 1 %</span></th></tr></thead><tbody>
+    <tr><td>0–2 J</td><td class="num">1.0 %</td><td><code>{1,8}</code></td><td><code>full</code></td></tr>
+    <tr><td>2–7.5 J</td><td class="num">0.6 %</td><td><code>E4/4</code></td><td><code>{1,16}</code></td></tr>
+    <tr><td>7.5–15 J</td><td class="num">0.3 %</td><td><code>E2/2</code></td><td><code>{1,4}</code></td></tr>
+    <tr><td>15–40 J</td><td class="num">0.6 %</td><td><code>E2/2</code></td><td><code>E4/4</code></td></tr>
+    <tr><td>40–75 J</td><td class="num">0.4 %</td><td><code>{1}</code></td><td><code>E4/4</code></td></tr>
+    <tr><td>75–120 J</td><td class="num">0.3 %</td><td><code>{1}</code></td><td><code>{1}</code></td></tr>
+    <tr><td>&gt; 120 J</td><td class="num">0.2 %</td><td><code>{1}</code></td><td><code>{1}</code></td></tr>
+  </tbody></table></div>
+  <div class="wrap"><ul class="plain">
+    <li><code>{1}</code> alone is off by a median 114 % under 2 J, but only 0.9 % above 120 J. Below 2 J the per-process overhead swamps the query.</li>
+    <li>With one repeat, 9 in 10 queries within 1 % is out of reach below 75 J; the best config gets 97–98.8 %.</li>
+    <li>Noise grows with the energy measured: σ(E) = √(0.029² + (0.89 %·E)²) J. Within a repeat, E₁ and E<sub>N</sub> correlate at ρ = 0.41 / 0.32 / 0.25 / 0.14 for N = 2 / 4 / 8 / 16.</li>
+  </ul></div>
 </section>
 
 <section>
@@ -633,13 +675,13 @@ ul.plain{margin:0;padding-left:20px;display:grid;gap:6px;max-width:80ch}
     <h2>Every measurement, by source</h2>
     <p>File names are shortened: <em>timing</em> is <code>query_timing_&lt;db&gt;.csv</code>, <em>samples</em> is <code>query_samples_&lt;db&gt;.csv</code>, <em>cold</em> is <code>query_cold_&lt;db&gt;.csv</code>, and <em>write</em> is <code>write_cold_&lt;db&gt;.csv</code>.</p>
   </div>
-  <div class="tbl wide"><table><thead><tr><th>Source</th><th>How it is read</th><th>When</th><th>CSV columns</th><th>Files</th></tr></thead><tbody><tr><td><span class='src c-energy'><i class='sw'></i>RAPL energy</span></td><td>rdmsr on <code>/dev/cpu/0/msr</code>: pkg <code>0x611</code>, core <code>0x639</code>, gpu <code>0x641</code>, dram <code>0x619</code>; units from <code>0x606</code></td><td>Just before and just after each batch (warm) or each execution (cold, write). 32-bit counters; a wrap is corrected.</td><td class='cols'><code>rapl_pkg_j</code> <code>rapl_core_j</code> <code>rapl_gpu_j</code> <code>rapl_dram_j</code> <code>pkg_watts_mean</code></td><td>timing, cold, write</td></tr><tr><td><span class='src c-ink'><i class='sw'></i>Wall clock</span></td><td><code>CLOCK_MONOTONIC</code> around the psql process</td><td>Per batch or execution.</td><td class='cols'><code>elapsed_sec</code> <code>avg_copy_elapsed_sec</code></td><td>timing, cold, write</td></tr><tr><td><span class='src c-thermal'><i class='sw'></i>Thermal and clock</span></td><td>sysfs: hwmon coretemp, <code>cpufreq/scaling_cur_freq</code>, <code>thermal_throttle/*_count</code></td><td>Background thread every 200 ms during a batch, plus readings at the gate before it.</td><td class='cols'><code>pkg_temp_start_c</code> <code>pkg_temp_end_c</code> <code>pkg_temp_mean_c</code> <code>pkg_temp_max_c</code> <code>core_temp_max_c</code> <code>mhz_mean</code> <code>throttle_core_delta</code> <code>throttle_pkg_delta</code> <code>idle_before_s</code> <code>preheat_s</code> <code>cooldown_wait_s</code></td><td>timing, samples</td></tr><tr><td><span class='src c-server'><i class='sw'></i>Server statistics</span></td><td>Each copy is wrapped in <code class='wrapok'>EXPLAIN (ANALYZE, TIMING OFF, COSTS ON, SUMMARY ON, BUFFERS)</code> and the psql output is parsed</td><td>Per copy; summed per batch.</td><td class='cols'><code>server_planning_ms</code> <code>server_execution_ms</code> <code>shared_hit/read/dirtied/written_blks</code> <code>temp_read/written_blks</code> <code>plan_nodes</code> <code>scan_nodes</code> <code>rows_out</code> <code>rows_processed</code> <code>rows_estimated</code> <code>workers_launched</code> <code>relations</code> <code>server_sum_ms</code></td><td>samples, cold</td></tr><tr><td><span class='src c-client'><i class='sw'></i>Client process</span></td><td><code>wait4()</code> resource usage of the psql process tree</td><td>Per batch or execution. The backend is not a child, so its CPU shows up only in RAPL.</td><td class='cols'><code>client_user_cpu_sec</code> <code>client_sys_cpu_sec</code> <code>client_max_rss_kb</code> <code>client_overhead_sec</code> (elapsed minus server time)</td><td>timing, cold, write</td></tr><tr><td><span class='src c-accent'><i class='sw'></i>Write-only</span></td><td>psql <code>\timing</code>, and <code>pg_current_wal_lsn()</code> before and after, in the same session</td><td>Per cold execution, around the section below <code>-- @MEASURE</code> only.</td><td class='cols'><code>stmt_ms</code> <code>wal_bytes</code> <code>setup_sec</code> <code>failed_stage</code></td><td>write</td></tr><tr><td><span class='src c-ink'><i class='sw'></i>Catalog snapshot</span></td><td><code>pg_class</code> sizes for every relation</td><td>Once per run.</td><td class='cols'><code>reltuples</code> <code>relpages</code> <code>heap_bytes</code> <code>index_bytes</code> <code>total_bytes</code></td><td>catalog</td></tr><tr><td><span class='src c-ink'><i class='sw'></i>Run context</span></td><td><code>summary.txt</code> and the order file</td><td>Once per run.</td><td class='cols'>thermal policy, clock state (governor, no_turbo, max freq), RAPL limits (this laptop: PL1 22 W, PL2 44 W, τ 28 s), dmesg throttle count, each entry's run id and its predecessor</td><td>summary, order</td></tr></tbody></table></div>
+  <div class="tbl wide"><table><thead><tr><th>Source</th><th>How it is read</th><th>When</th><th>CSV columns</th><th>Files</th></tr></thead><tbody><tr><td><span class='src c-energy'><i class='sw'></i>RAPL energy</span></td><td>rdmsr on <code>/dev/cpu/0/msr</code>: pkg <code>0x611</code>, core <code>0x639</code>, gpu <code>0x641</code>, dram <code>0x619</code>; units from <code>0x606</code></td><td>Just before and just after each batch (warm) or each execution (cold, write). 32-bit counters; a wrap is corrected.</td><td class='cols'><code>rapl_pkg_j</code> <code>rapl_core_j</code> <code>rapl_gpu_j</code> <code>rapl_dram_j</code> <code>pkg_watts_mean</code></td><td>timing, cold, write</td></tr><tr><td><span class='src c-ink'><i class='sw'></i>Wall clock</span></td><td><code>CLOCK_MONOTONIC</code> around the psql process</td><td>Per batch or execution.</td><td class='cols'><code>elapsed_sec</code> <code>avg_copy_elapsed_sec</code></td><td>timing, cold, write</td></tr><tr><td><span class='src c-thermal'><i class='sw'></i>Thermal and clock</span></td><td>sysfs: hwmon coretemp, <code>cpufreq/scaling_cur_freq</code>, <code>thermal_throttle/*_count</code></td><td>Background thread every 200 ms during a batch, plus readings at the gate before it. In the slope sample the gate waited at most <code>PREHEAT_MAX_S</code> = 60 s to warm up and <code>COOLDOWN_MAX_S</code> = 120 s to cool down.</td><td class='cols'><code>pkg_temp_start_c</code> <code>pkg_temp_end_c</code> <code>pkg_temp_mean_c</code> <code>pkg_temp_max_c</code> <code>core_temp_max_c</code> <code>mhz_mean</code> <code>throttle_core_delta</code> <code>throttle_pkg_delta</code> <code>idle_before_s</code> <code>preheat_s</code> <code>cooldown_wait_s</code></td><td>timing, samples</td></tr><tr><td><span class='src c-server'><i class='sw'></i>Server statistics</span></td><td>Each copy is wrapped in <code class='wrapok'>EXPLAIN (ANALYZE, TIMING OFF, COSTS ON, SUMMARY ON, BUFFERS)</code> and the psql output is parsed</td><td>Per copy; summed per batch.</td><td class='cols'><code>server_planning_ms</code> <code>server_execution_ms</code> <code>shared_hit/read/dirtied/written_blks</code> <code>temp_read/written_blks</code> <code>plan_nodes</code> <code>scan_nodes</code> <code>rows_out</code> <code>rows_processed</code> <code>rows_estimated</code> <code>workers_launched</code> <code>relations</code> <code>server_sum_ms</code></td><td>samples, cold</td></tr><tr><td><span class='src c-client'><i class='sw'></i>Client process</span></td><td><code>wait4()</code> resource usage of the psql process tree</td><td>Per batch or execution. The backend is not a child, so its CPU shows up only in RAPL.</td><td class='cols'><code>client_user_cpu_sec</code> <code>client_sys_cpu_sec</code> <code>client_max_rss_kb</code> <code>client_overhead_sec</code> (elapsed minus server time)</td><td>timing, cold, write</td></tr><tr><td><span class='src c-accent'><i class='sw'></i>Write-only</span></td><td>psql <code>\timing</code>, and <code>pg_current_wal_lsn()</code> before and after, in the same session</td><td>Per cold execution, around the section below <code>-- @MEASURE</code> only.</td><td class='cols'><code>stmt_ms</code> <code>wal_bytes</code> <code>setup_sec</code> <code>failed_stage</code></td><td>write</td></tr><tr><td><span class='src c-ink'><i class='sw'></i>Catalog snapshot</span></td><td><code>pg_class</code> sizes for every relation</td><td>Once per run.</td><td class='cols'><code>reltuples</code> <code>relpages</code> <code>heap_bytes</code> <code>index_bytes</code> <code>total_bytes</code></td><td>catalog</td></tr><tr><td><span class='src c-ink'><i class='sw'></i>Run context</span></td><td><code>summary.txt</code> and the order file</td><td>Once per run.</td><td class='cols'>thermal policy, clock state (governor, no_turbo, max freq; <code>fix_clock</code>, <code>clock_max_khz</code>), batch cap (<code>batch_cap_slow</code>, <code>slow_copy_sec</code>), RAPL limits (this laptop: PL1 22 W, PL2 44 W, τ 28 s), dmesg throttle count, each entry's run id and its predecessor; a replayed order notes the file it was replayed from</td><td>summary, order</td></tr><tr><td><span class='src c-ink'><i class='sw'></i>Query selection</span></td><td><code>manifest.csv</code> in <code>logs/slope_sample/</code>, one row per staged query</td><td>Once per sample, before the runs.</td><td class='cols'><code>tier</code> <code>band</code> <code>query</code> <code>e1_j</code> <code>t1_s</code> <code>workers</code> <code>repeats</code> <code>staged</code>: why each query was picked, by its 1-copy energy band from an earlier SQLStorm pass</td><td>manifest</td></tr></tbody></table></div>
   <div class="wrap"><p class="note">On this CPU the RAPL GPU and DRAM domains are not exposed, so those two columns stay blank rather than zero.</p></div>
 </section>
 
 <section class="wrap">
   <h2>Runners compared</h2>
-  <div class='tbl'><table><thead><tr><th>Runner</th><th>Started by</th><th>Cache state</th><th>Unit measured</th><th>RAPL window</th><th>Writes</th></tr></thead><tbody><tr><td><code>query_runner</code></td><td><code>make run · make warm-stepup</code></td><td>Warm. Under warm-stepup, each entry gets a cold start first and is then warmed up.</td><td>A batch of N copies in one psql process, for each N in BATCH_SIZES</td><td>One batch</td><td>query_timing, query_samples, query_catalog</td></tr><tr><td><code>cold_runner</code></td><td><code>make cold</code></td><td>Cold: caches dropped and cluster restarted before every execution</td><td>One execution</td><td>One execution</td><td>query_cold_&lt;db&gt;.csv</td></tr><tr><td><code>write_runner</code></td><td><code>make write</code></td><td>Cold, after SETUP and quiesce (autovacuum off on w_* tables, CHECKPOINT)</td><td>The section below the marker line</td><td>Measured section only</td><td>write_cold_&lt;db&gt;.csv</td></tr><tr><td><code>plan_builder</code></td><td><code>make plans</code></td><td>As found</td><td>EXPLAIN ANALYZE text; APPEND=1 adds dated snapshots and a plan-shape hash</td><td>None</td><td>plans/&lt;db&gt;/</td></tr><tr><td><code>output_runner</code></td><td><code>make outputs</code></td><td>As found</td><td>Result rows, up to MAX_ROWS</td><td>None</td><td>outputs/&lt;db&gt;/</td></tr></tbody></table></div>
+  <div class='tbl'><table><thead><tr><th>Runner</th><th>Started by</th><th>Cache state</th><th>Unit measured</th><th>RAPL window</th><th>Writes</th></tr></thead><tbody><tr><td><code>query_runner</code></td><td><code>make run · make warm-stepup</code>; <code>ORDER_FILE</code> replays a fixed order</td><td>Warm. Under warm-stepup, each entry gets a cold start first and is then warmed up.</td><td>A batch of N copies in one psql process, for each N in BATCH_SIZES. With a batch cap, N=16 is skipped when the warm single copy takes longer than <code>slow_copy_sec</code></td><td>One batch</td><td>query_timing, query_samples, query_catalog</td></tr><tr><td><code>cold_runner</code></td><td><code>make cold</code></td><td>Cold: caches dropped and cluster restarted before every execution</td><td>One execution</td><td>One execution</td><td>query_cold_&lt;db&gt;.csv</td></tr><tr><td><code>write_runner</code></td><td><code>make write</code></td><td>Cold, after SETUP and quiesce (autovacuum off on w_* tables, CHECKPOINT)</td><td>The section below the marker line</td><td>Measured section only</td><td>write_cold_&lt;db&gt;.csv</td></tr><tr><td><code>plan_builder</code></td><td><code>make plans</code></td><td>As found</td><td>EXPLAIN ANALYZE text; APPEND=1 adds dated snapshots and a plan-shape hash</td><td>None</td><td>plans/&lt;db&gt;/</td></tr><tr><td><code>output_runner</code></td><td><code>make outputs</code></td><td>As found</td><td>Result rows, up to MAX_ROWS</td><td>None</td><td>outputs/&lt;db&gt;/</td></tr></tbody></table></div>
 </section>
 
 <section class="wrap">
